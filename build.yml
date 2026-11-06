@@ -1,0 +1,31 @@
+name: Otomatik EXE ve Web Yayinlama (OTA)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - name: Depoyu Cek
+        uses: actions/checkout@v4
+      - name: Node.js Kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Bagimliliklari Yukle ve Portable EXE Uret
+        run: |
+          npm install
+          npm run build:exe
+      - name: EXE Dosyasini Indirilebilir Paket Olarak Yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: MadenAkademi-Windows-EXE
+          path: dist/*.exe
