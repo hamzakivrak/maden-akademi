@@ -1,16 +1,39 @@
 {
+  "id": "/maden-akademi/",
   "name": "MadenAkademi AI - Akademik & Sektörel Asistan",
   "short_name": "MadenAkademi",
+  "description": "Madencilikte Jeoistatistik, Yeraltı Kömür Tahkimat, Grizu ve İSG Akademik Makale Arama, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu.",
+  "lang": "tr",
+  "dir": "ltr",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0f141c",
   "theme_color": "#f59e0b",
-  "orientation": "any",
+  "categories": [
+    "education",
+    "productivity",
+    "utilities"
+  ],
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2942/2942789.png",
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

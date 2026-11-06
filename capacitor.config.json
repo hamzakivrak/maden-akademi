@@ -3,6 +3,7 @@
   "appName": "MadenAkademi AI",
   "webDir": ".",
   "server": {
+    "url": "https://hamzakivrak.github.io/maden-akademi/",
     "cleartext": true
   }
 }

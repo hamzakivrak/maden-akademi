@@ -1,6 +1,6 @@
 {
   "name": "maden-akademi-ai",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Madencilik, Jeoistatistik, Tahkimat, Grizu ve İSG Akademik Araştırma & AI Platformu",
   "main": "electron-main.js",
   "scripts": {

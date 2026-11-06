@@ -1,7 +1,7 @@
 const { app, BrowserWindow } = require('electron');
 
-// CANLI OTA ADRESİNİZ: GitHub Pages adresinizi buraya yazdığınızda EXE her açılışta en güncel sürümü çeker!
-const GITHUB_PAGES_LIVE_URL = process.env.MADEN_LIVE_URL || `file://${__dirname}/index.html`;
+// CANLI OTA ADRESİNİZ: EXE her açıldığında doğrudan GitHub Pages adresinizdeki en güncel sürümü çeker!
+const GITHUB_PAGES_LIVE_URL = process.env.MADEN_LIVE_URL || 'https://hamzakivrak.github.io/maden-akademi/';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -14,7 +14,9 @@ function createWindow() {
       contextIsolation: true
     }
   });
-  win.loadURL(GITHUB_PAGES_LIVE_URL);
+  win.loadURL(GITHUB_PAGES_LIVE_URL).catch(() => {
+    win.loadFile('index.html');
+  });
 }
 
 app.whenReady().then(createWindow);
