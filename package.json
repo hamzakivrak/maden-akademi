@@ -1,0 +1,21 @@
+{
+  "name": "maden-akademi-ai",
+  "version": "2.5.0",
+  "description": "Madencilik, Jeoistatistik, Tahkimat, Grizu ve İSG Akademik Araştırma & AI Platformu",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:exe": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.madenakademi.ai",
+    "productName": "MadenAkademiAI",
+    "win": {
+      "target": "portable"
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}

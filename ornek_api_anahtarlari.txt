@@ -1,0 +1,9 @@
+grok:
+gsk_hwM1234567890OrnekAnahtar1
+gsk_nDixPD2m3AOrnekAnahtar2
+
+gemini:
+AIzaSyA2pZnnVOrnekGemini1
+AIzaSyB-AFYTOrnekGemini2
+AIzaSyDOzOrnekGemini3
+AIzaSyDu34KOrnekGemini4

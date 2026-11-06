@@ -1,0 +1,8 @@
+{
+  "appId": "com.madenakademi.ai",
+  "appName": "MadenAkademi AI",
+  "webDir": ".",
+  "server": {
+    "cleartext": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "MadenAkademi AI - Akademik & Sektörel Asistan",
+  "short_name": "MadenAkademi",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f141c",
+  "theme_color": "#f59e0b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2942/2942789.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
