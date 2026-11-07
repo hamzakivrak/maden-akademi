@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>MadenAkademi AI — Akademik Literatür, Tam Metin Avcısı &amp; Sektörel İstihbarat</title>
+  <meta name="description" content="Akademik Makale Arama, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu" />
+  <meta name="theme-color" content="#f59e0b" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -241,7 +245,10 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="font-extrabold text-lg tracking-tight">MadenAkademi <span class="theme-accent-text">AI</span></span>
-            <span class="text-[11px] px-2 py-0.5 rounded-full theme-accent-soft font-semibold hidden sm:inline-block">v2.5 OTA</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full theme-accent-soft font-semibold">v4.0 Canlı PDF</span>
+            <button id="btnForceOtaUpdate" class="text-[11px] px-2 py-0.5 rounded-lg theme-bg-card border theme-border hover:border-amber-500 flex items-center gap-1" title="En son GitHub güncellemesini zorla çek">
+              <i class="fa-solid fa-arrows-rotate theme-accent-text"></i><span class="hidden md:inline">Güncelle</span>
+            </button>
           </div>
           <p class="text-xs theme-text-secondary hidden md:block">Jeoistatistik, Tahkimat, Grizu &amp; İSG Akademik Makale ve Haber Motoru</p>
         </div>
@@ -711,7 +718,7 @@
               </div>
             </div>
             <!-- Keep hidden iframe only so any legacy ID reference never breaks -->
-            <iframe id="readerPdfIframe" title="PDF Yedek" class="hidden" src="about:blank"></iframe>
+            <div id="readerPdfIframe" class="hidden"></div>
           </div>
         </div>
 
@@ -3293,6 +3300,22 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         if (State.hunterConfig.email) document.getElementById('inputUnpaywallEmail').value = State.hunterConfig.email;
         if (State.hunterConfig.customMirror) document.getElementById('inputCustomDoiMirror').value = State.hunterConfig.customMirror;
 
+        // Force OTA Cache Clear & Instant Update Button
+        document.getElementById('btnForceOtaUpdate')?.addEventListener('click', async () => {
+          showToast('Önbellek temizleniyor ve en güncel sürüm çekiliyor...', 'info');
+          try {
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              for (const r of regs) await r.unregister();
+            }
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              for (const k of keys) await caches.delete(k);
+            }
+          } catch (e) {}
+          window.location.href = window.location.pathname + '?v=' + Date.now();
+        });
+
         // Top Navigation
         document.querySelectorAll('#mainNav .nav-btn').forEach(btn => {
           btn.addEventListener('click', () => switchView(btn.getAttribute('data-nav')));
@@ -3423,6 +3446,7 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
               if (uploadedPdfBlobUrl) URL.revokeObjectURL(uploadedPdfBlobUrl);
               uploadedPdfBlobUrl = URL.createObjectURL(file);
               const arrayBuf = await file.arrayBuffer();
+              window._lastUploadedPdfBuffer = arrayBuf.slice(0);
               if (!window.pdfjsLib) throw new Error('PDF.js kütüphanesi yüklenemedi.');
               const pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuf }).promise;
               const numPages = pdfDoc.numPages;
@@ -3577,6 +3601,9 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
 
           customPaper.fullTextSections = sectionsToUse;
           customPaper.fullTextLoaded = true; // Preserve all extracted pages/paragraphs verbatim!
+          if (window._lastUploadedPdfBuffer) {
+            customPaper.uploadedArrayBuffer = window._lastUploadedPdfBuffer.slice(0);
+          }
 
           State.papers.unshift(customPaper);
           renderAcademicResults();
@@ -3731,25 +3758,55 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           pv.rect = null;
           document.getElementById('pdfSnipActionBar')?.classList.add('hidden');
 
-          // 1. If a raw PDF ArrayBuffer or local blob URL exists, render real PDF via PDF.js
+          // 1. If user uploaded a local PDF file (stored in paper.uploadedArrayBuffer or customArrayBuffer), or remote PDF URL exists, render via PDF.js!
+          const bufferToUse = customArrayBuffer || paper?.uploadedArrayBuffer || null;
           const pdfUrlToTry = paper?.pdfDirectUrl || paper?.oaUrl || '';
-          if (window.pdfjsLib && (customArrayBuffer || pdfUrlToTry)) {
-            try {
-              const srcArg = customArrayBuffer ? { data: customArrayBuffer } : { url: pdfUrlToTry };
-              const loadingTask = window.pdfjsLib.getDocument(srcArg);
-              pv.pdfDoc = await loadingTask.promise;
-              pv.totalPages = pv.pdfDoc.numPages;
-              document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
-              document.getElementById('inputPdfPageNum').value = 1;
-              await renderCurrentPdfPage();
-              return;
-            } catch (err) {
-              // CORS or non-PDF landing URL: Fall back to rendering a high-DPI In-App Virtual PDF Sheet from fullTextSections so it NEVER shows a broken cross icon!
-              pv.pdfDoc = null;
+
+          if (window.pdfjsLib && (bufferToUse || pdfUrlToTry)) {
+            if (bufferToUse) {
+              try {
+                // Clone buffer so PDF.js worker transfer doesn't detach the original
+                const cloned = bufferToUse.slice(0);
+                pv.pdfDoc = await window.pdfjsLib.getDocument({ data: cloned }).promise;
+                pv.totalPages = pv.pdfDoc.numPages;
+                document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
+                document.getElementById('inputPdfPageNum').value = 1;
+                await renderCurrentPdfPage();
+                return;
+              } catch (e) {
+                pv.pdfDoc = null;
+              }
             }
-          } else {
-            pv.pdfDoc = null;
+
+            // Try direct URL first, then CORS proxy bridges so external publisher PDFs open right inside the canvas!
+            if (pdfUrlToTry) {
+              const candidateUrls = [
+                pdfUrlToTry,
+                `https://corsproxy.io/?${encodeURIComponent(pdfUrlToTry)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(pdfUrlToTry)}`
+              ];
+              for (const cand of candidateUrls) {
+                try {
+                  const res = await fetch(cand);
+                  if (!res.ok) continue;
+                  const ab = await res.arrayBuffer();
+                  // Verify "%PDF-" magic header
+                  const headBytes = new Uint8Array(ab.slice(0, 5));
+                  const headStr = String.fromCharCode(...headBytes);
+                  if (headStr.startsWith('%PDF')) {
+                    paper.uploadedArrayBuffer = ab.slice(0);
+                    pv.pdfDoc = await window.pdfjsLib.getDocument({ data: ab }).promise;
+                    pv.totalPages = pv.pdfDoc.numPages;
+                    document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
+                    document.getElementById('inputPdfPageNum').value = 1;
+                    await renderCurrentPdfPage();
+                    return;
+                  }
+                } catch (e) {}
+              }
+            }
           }
+          pv.pdfDoc = null;
 
           // Virtual High-DPI PDF Page Renderer (when publisher blocks direct PDF CORS or user hasn't uploaded local file yet)
           const secs = paper?.fullTextSections || [{ heading: 'Özet', body: paper?.abstract || '' }];
@@ -4298,6 +4355,13 @@ AIzaSyDu34KOrnekGemini4`;
         URL.revokeObjectURL(url);
       }
 
+            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js?v=4.0').then(function(reg) {
+            reg.update();
+          }).catch(function() {});
+        });
+      }
       window.addEventListener('DOMContentLoaded', initApp);
     })();
   </script>
