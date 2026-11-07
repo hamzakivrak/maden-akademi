@@ -2006,6 +2006,45 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
       }
 
 
+
+      // --- ARAMA HIZ & İLGİ YARDIMCILARI ---
+      async function fetchT(url, ms = 7000, init = {}) {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), ms);
+        try { return await fetch(url, { ...init, signal: c.signal }); }
+        finally { clearTimeout(t); }
+      }
+
+      const SEARCH_STOPWORDS = new Set(['the','and','for','with','from','into','using','that','this','are','was','were','use','used','its','their','ve','ile','için','bir','olan','gibi','veya','de','da']);
+      function tokenizeQuery(str) {
+        return [...new Set(String(str || '').toLowerCase().replace(/[^a-z0-9ğüşıöçâîû\s-]/g, ' ').split(/\s+/).filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w)))];
+      }
+      function scorePaper(p, tokensEn, tokensTr) {
+        const title = (p.title || '').toLowerCase();
+        const abs = (p.abstract || '').toLowerCase();
+        const calc = (toks) => {
+          if (!toks.length) return { s: 0, m: 0 };
+          let tm = 0, am = 0;
+          for (const t of toks) {
+            const stem = t.length > 6 ? t.slice(0, -1) : t;
+            if (title.includes(stem)) tm++;
+            if (abs.includes(stem)) am++;
+          }
+          return { s: (tm * 3 + am) / toks.length, m: tm + am };
+        };
+        const a = calc(tokensEn), b = calc(tokensTr);
+        const best = a.s >= b.s ? a : b;
+        p._matches = best.m;
+        const age = new Date().getFullYear() - (p.year || 2000);
+        const rec = age <= 2 ? 0.5 : (age <= 5 ? 0.2 : 0);
+        return best.s * 2 + Math.log10((p.citations || 0) + 1) * 0.4 + rec + (p.abstract ? 0.3 : -0.8) + (p.isOpenAccess ? 0.2 : 0);
+      }
+      function addMiningContext(rawQuery, enQuery) {
+        const miningTerms = /maden|kömür|komur|ocak\b|tahkimat|grizu|cevher|flotasyon|patlatma|şev\b|sev\b|jeoistatistik|kriging|rezerv|uzunayak|ayak\b/i;
+        if (miningTerms.test(rawQuery) && !/\bmin(e|es|ing)\b/i.test(enQuery)) return `${enQuery} mining`;
+        return enQuery;
+      }
+
       // --- AI / ÜCRETSİZ YARDIMCILAR (kullanıcı butonla isteyince devreye girer) ---
       function hasAiKeys() {
         return (State.keyPool.keys || []).length > 0;
@@ -2125,30 +2164,42 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           } catch (e) {}
           showToast('AI sorgu çevirisi yapılamadı, ücretsiz çeviriye geçildi.', 'info');
         }
+        // Önbellek (aynı sorgu tekrar çevrilmez)
+        State.qCache = State.qCache || Storage.get('ma_qcache', {});
+        const ck = rawQuery.toLowerCase();
+        if (State.qCache[ck]) return { ...State.qCache[ck], usedAi: false };
+
+        // Ücretsiz ve hızlı çeviri: dil otomatik algılanır (Türkçe harf kullanmasanız da çalışır)
+        let en = null, srcLang = null;
         try {
-          const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(rawQuery) || Object.keys(TR_ACADEMIC_DICT).some(k => rawQuery.toLowerCase().includes(k));
-          if (hasTurkishChars) {
-            const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(rawQuery)}&langpair=tr|en`);
-            if (trRes.ok) {
-              const trData = await trRes.json();
-              const translated = (trData?.responseData?.translatedText || '').trim();
-              if (translated && translated.toLowerCase() !== rawQuery.toLowerCase() && !translated.includes('MYMEMORY WARNING')) {
-                return {
-                  enQuery: translated,
-                  trQuery: rawQuery,
-                  newsQuery: rawQuery,
-                  usedAi: false
-                };
-              }
-            }
+          const r = await fetchT(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(rawQuery)}`, 3500);
+          if (r.ok) {
+            const j = await r.json();
+            en = (j?.[0] || []).map(x => x?.[0] || '').join('').trim();
+            srcLang = j?.[2] || null;
           }
         } catch (e) {}
-        return {
-          enQuery: buildFallbackEnglishQuery(rawQuery),
-          trQuery: rawQuery,
-          newsQuery: rawQuery,
-          usedAi: false
-        };
+        if (!en) {
+          try {
+            const trRes = await fetchT(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(rawQuery)}&langpair=tr|en`, 3500);
+            if (trRes.ok) {
+              const t = ((await trRes.json())?.responseData?.translatedText || '').trim();
+              if (t && !t.includes('MYMEMORY WARNING')) en = t;
+            }
+          } catch (e) {}
+        }
+        if (srcLang === 'en') en = rawQuery;
+        if (!en || en.toLowerCase() === rawQuery.toLowerCase()) {
+          const fb = buildFallbackEnglishQuery(rawQuery);
+          en = fb && fb !== rawQuery ? fb : rawQuery;
+        }
+        en = addMiningContext(rawQuery, en.replace(/["“”]/g, '').trim());
+        const result = { enQuery: en, trQuery: rawQuery, newsQuery: rawQuery, usedAi: false };
+        State.qCache[ck] = { enQuery: en, trQuery: rawQuery, newsQuery: rawQuery };
+        const keys = Object.keys(State.qCache);
+        if (keys.length > 80) delete State.qCache[keys[0]];
+        Storage.set('ma_qcache', State.qCache);
+        return result;
       }
 
       async function executeFullSearch(queryText, opts = {}) {
@@ -2160,97 +2211,129 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
 
         const banner = document.getElementById('searchStatusBanner');
         const statusTitle = document.getElementById('searchStatusTitle');
+        const statusSub = document.getElementById('searchStatusSub');
         const expBar = document.getElementById('aiQueryExpansionBar');
         const expText = document.getElementById('aiExpandedQueryText');
         const expSources = document.getElementById('aiSearchSourcesSummary');
-
-        if (banner) banner.classList.remove('hidden');
-        if (statusTitle) statusTitle.textContent = `"${q}" için AI destekli akademik sorgu hazırlanıyor ve global veritabanları taranıyor...`;
 
         const mode = document.getElementById('searchSourceMode').value;
         const onlyOa = document.getElementById('chkOnlyFullText').checked;
         const sortOrder = document.getElementById('sortOrderSelect').value;
 
-        try {
-          // Step 1: Translate/expand query to global academic English when searching globally
-          const expanded = await expandQueryWithAI(q, opts.useAi === true);
-          const effectiveAcademicQuery = State.langScope === 'tr' ? expanded.trQuery : expanded.enQuery;
-
-          if (expBar && expText) {
-            expBar.classList.remove('hidden');
-            expText.textContent = State.langScope === 'tr'
-              ? `${expanded.usedAi ? '🤖 AI ' : ''}TR Akademik Sorgu: "${expanded.trQuery}"`
-              : `${expanded.usedAi ? '🤖 AI ' : ''}Global Akademik Sorgu: "${expanded.enQuery}" (Girilen: "${q}")`;
-          }
-
-          // Step 2: Query multiple real academic databases in parallel
-          const academicTasks = [];
-          if (mode === 'all' || mode === 'academic') {
-            if (State.langScope === 'tr') {
-              academicTasks.push(fetchOpenAlexPapers(expanded.trQuery, 'tr', onlyOa, sortOrder));
-              academicTasks.push(fetchCrossRefPapers(expanded.trQuery));
-            } else if (State.langScope === 'en') {
-              academicTasks.push(fetchOpenAlexPapers(expanded.enQuery, 'en', onlyOa, sortOrder));
-              academicTasks.push(fetchEuropePmcPapers(expanded.enQuery, onlyOa, sortOrder));
-              academicTasks.push(fetchArxivPapers(expanded.enQuery, sortOrder));
-              academicTasks.push(fetchSemanticScholarPapers(expanded.enQuery, onlyOa));
-            } else {
-              // 'all' -> Global English literature + Turkish literature combined, prioritizing global full-text
-              academicTasks.push(fetchOpenAlexPapers(expanded.enQuery, 'en', onlyOa, sortOrder));
-              academicTasks.push(fetchEuropePmcPapers(expanded.enQuery, onlyOa, sortOrder));
-              academicTasks.push(fetchArxivPapers(expanded.enQuery, sortOrder));
-              academicTasks.push(fetchSemanticScholarPapers(expanded.enQuery, onlyOa));
-              academicTasks.push(fetchOpenAlexPapers(expanded.trQuery, 'tr', onlyOa, sortOrder));
-            }
-          }
-
-          const newsTask = (mode === 'all' || mode === 'news')
-            ? fetchLiveNewsForTopic(expanded.newsQuery || q, State.langScope)
-            : Promise.resolve([]);
-
-          const [academicArrays, liveNews] = await Promise.all([
-            Promise.all(academicTasks),
-            newsTask
-          ]);
-
-          // Merge & deduplicate papers strictly from live results for the searched query (NO hardcoded mining injection!)
-          const mergedPapers = [];
-          const seenTitles = new Set();
-
-          for (const arr of academicArrays) {
-            for (const p of (arr || [])) {
-              const normTitle = (p.title || '').toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '').slice(0, 60);
-              if (!normTitle || seenTitles.has(normTitle)) continue;
-              seenTitles.add(normTitle);
-              mergedPapers.push(p);
-            }
-          }
-
-          if (sortOrder === 'newest') {
-            mergedPapers.sort((a, b) => (b.year || 0) - (a.year || 0));
-          } else if (sortOrder === 'citations') {
-            mergedPapers.sort((a, b) => (b.citations || 0) - (a.citations || 0));
-          }
-
-          State.papers = mergedPapers;
-          State.news = liveNews;
-
-          if (expSources) {
-            const fullTextCount = mergedPapers.filter(p => p.hasFullTextXml || p.isOpenAccess).length;
-            expSources.textContent = `${mergedPapers.length} makale bulundu (${fullTextCount} açık tam metin/PDF) • OpenAlex + EuropePMC + arXiv + Semantic Scholar`;
-          }
-
+        const token = (State.searchToken = (State.searchToken || 0) + 1);
+        const cacheKey = JSON.stringify([q.toLowerCase(), State.langScope, mode, onlyOa, sortOrder, opts.useAi === true]);
+        State.searchCache = State.searchCache || new Map();
+        const hit = State.searchCache.get(cacheKey);
+        if (hit && Date.now() - hit.t < 30 * 60 * 1000) {
+          State.papers = hit.papers;
+          State.news = hit.news;
           renderAcademicResults();
           renderNewsResults();
+          if (expBar && expText) { expBar.classList.remove('hidden'); expText.textContent = hit.expLabel; }
+          if (expSources) expSources.textContent = hit.summary + ' • önbellekten (anında)';
+          showToast('Sonuçlar önbellekten anında getirildi.', 'success');
+          return;
+        }
 
-          // Zero background API key drain: Titles are translated on-demand when clicking 'Tümünü AI ile Türkçeleştir'
+        if (banner) banner.classList.remove('hidden');
+        if (statusTitle) statusTitle.textContent = `"${q}" için sorgu hazırlanıyor...`;
+        if (statusSub) statusSub.textContent = 'Dil otomatik algılanıyor ve akademik veritabanları paralel taranacak';
+        const t0 = performance.now();
 
-          showToast(`"${q}" için ${State.papers.length} makale ve ${State.news.length} güncel haber bulundu.`, 'success');
+        try {
+          // Step 1: hızlı sorgu çevirisi (önbellekli) — haber araması buna beklemeden başlar
+          const expanded = await expandQueryWithAI(q, opts.useAi === true);
+          if (token !== State.searchToken) return;
+
+          const expLabel = State.langScope === 'tr'
+            ? `${expanded.usedAi ? '🤖 AI ' : ''}TR Akademik Sorgu: "${expanded.trQuery}"`
+            : `${expanded.usedAi ? '🤖 AI ' : ''}Global Akademik Sorgu: "${expanded.enQuery}" (Girilen: "${q}")`;
+          if (expBar && expText) { expBar.classList.remove('hidden'); expText.textContent = expLabel; }
+
+          const tokensEn = tokenizeQuery(expanded.enQuery);
+          const tokensTr = tokenizeQuery(expanded.trQuery);
+
+          // Haberler akademik sonuçları BEKLETMEZ: gelince ayrıca çizilir
+          if (mode === 'all' || mode === 'news') {
+            fetchLiveNewsForTopic(expanded.newsQuery || q, State.langScope).then(items => {
+              if (token !== State.searchToken) return;
+              State.news = items;
+              renderNewsResults();
+            }).catch(() => {});
+          }
+
+          // Step 2: kaynakları paralel tara, her biri bitince sonuçları anında göster (aşamalı)
+          const bag = [];
+          const seen = new Set();
+          const status = {};
+          const normT = (t) => (t || '').toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '').slice(0, 60);
+
+          const summaryLine = () => {
+            const names = Object.keys(status);
+            return `${bag.length} makale • ` + names.map(n => `${n} ${typeof status[n] === 'number' ? '✓' + status[n] : (status[n] === 'hata' ? '✗' : '⏳')}`).join(' • ');
+          };
+          const publish = () => {
+            let list = [...bag];
+            if (sortOrder === 'newest') list.sort((a, b) => (b.year || 0) - (a.year || 0));
+            else if (sortOrder === 'citations') list.sort((a, b) => (b.citations || 0) - (a.citations || 0));
+            else list.sort((a, b) => (b._score || 0) - (a._score || 0));
+            // Çok sonuç varsa, sorguyla hiç eşleşmeyen gürültüyü ele
+            if (list.length > 12) list = list.filter(x => (x._matches || 0) > 0);
+            State.papers = list;
+            renderAcademicResults();
+            if (expSources) expSources.textContent = summaryLine();
+            if (statusSub) statusSub.textContent = summaryLine();
+          };
+          const ingest = (name, arr) => {
+            const list = arr || [];
+            status[name] = list.length;
+            for (const paper of list) {
+              const doiKey = (paper.doi || '').toLowerCase().replace(/^https?:\/\/doi\.org\//, '');
+              const tKey = normT(paper.title);
+              if (!tKey || seen.has(tKey) || (doiKey && seen.has(doiKey))) continue;
+              seen.add(tKey);
+              if (doiKey) seen.add(doiKey);
+              paper._score = scorePaper(paper, tokensEn, tokensTr);
+              bag.push(paper);
+            }
+            publish();
+          };
+
+          const jobs = [];
+          const run = (name, fn) => {
+            status[name] = null;
+            jobs.push(
+              fn().then(arr => { if (token === State.searchToken) ingest(name, arr); })
+                  .catch(() => { status[name] = 'hata'; if (token === State.searchToken) publish(); })
+            );
+          };
+
+          if (mode === 'all' || mode === 'academic') {
+            if (State.langScope === 'tr') {
+              run('OpenAlex-TR', () => fetchOpenAlexPapers(expanded.trQuery, 'tr', onlyOa, sortOrder));
+              run('CrossRef', () => fetchCrossRefPapers(expanded.trQuery));
+            } else {
+              run('OpenAlex', () => fetchOpenAlexPapers(expanded.enQuery, 'en', onlyOa, sortOrder));
+              run('EuropePMC', () => fetchEuropePmcPapers(expanded.enQuery, onlyOa, sortOrder));
+              run('SemanticScholar', () => fetchSemanticScholarPapers(expanded.enQuery, onlyOa));
+              run('arXiv', () => fetchArxivPapers(expanded.enQuery, sortOrder));
+              if (State.langScope === 'all') run('OpenAlex-TR', () => fetchOpenAlexPapers(expanded.trQuery, 'tr', onlyOa, sortOrder));
+            }
+          }
+          publish();
+
+          await Promise.allSettled(jobs);
+          if (token !== State.searchToken) return;
+
+          const secs = ((performance.now() - t0) / 1000).toFixed(1);
+          State.searchCache.set(cacheKey, { t: Date.now(), papers: [...State.papers], news: State.news, expLabel, summary: summaryLine() });
+          renderNewsResults();
+          showToast(`"${q}" için ${State.papers.length} makale bulundu (${secs} sn).`, State.papers.length ? 'success' : 'info');
         } catch (err) {
           renderAcademicResults();
           renderNewsResults();
         } finally {
-          if (banner) banner.classList.add('hidden');
+          if (token === State.searchToken && banner) banner.classList.add('hidden');
         }
       }
 
@@ -2279,7 +2362,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         try {
           let filterParts = [];
           if (langFilter === 'tr') filterParts.push('language:tr');
-          else if (langFilter === 'en') filterParts.push('language:en');
+
           if (onlyOa) filterParts.push('is_oa:true');
 
           const filterParam = filterParts.length > 0 ? `&filter=${filterParts.join(',')}` : '';
@@ -2287,8 +2370,8 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           if (sortOrder === 'newest') sortParam = '&sort=publication_year:desc';
           else if (sortOrder === 'citations') sortParam = '&sort=cited_by_count:desc';
 
-          const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=10${filterParam}${sortParam}`;
-          const res = await fetch(url);
+          const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=12${filterParam}${sortParam}&select=id,doi,title,publication_year,language,primary_location,best_oa_location,open_access,cited_by_count,authorships,abstract_inverted_index,concepts&mailto=${encodeURIComponent(State.hunterConfig.email || 'maden.arastirma@akademi.org')}`;
+          const res = await fetchT(url, 7000);
           if (!res.ok) return [];
           const data = await res.json();
           return (data.results || []).map((w, idx) => {
@@ -2325,7 +2408,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         try {
           const oaFilter = onlyOa ? ' AND (OPEN_ACCESS:y)' : '';
           const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query + oaFilter)}&resultType=core&pageSize=8&format=json`;
-          const res = await fetch(url);
+          const res = await fetchT(url, 7000);
           if (!res.ok) return [];
           const data = await res.json();
           const list = data?.resultList?.result || [];
@@ -2364,7 +2447,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         try {
           const sortBy = sortOrder === 'newest' ? 'submittedDate' : 'relevance';
           const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=6&sortBy=${sortBy}&sortOrder=descending`;
-          const res = await fetch(url);
+          const res = await fetchT(url, 7000);
           if (!res.ok) return [];
           const xmlText = await res.text();
           const parser = new DOMParser();
@@ -2408,7 +2491,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         try {
           const oaParam = onlyOa ? '&openAccessPdf' : '';
           const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=8&fields=title,authors,year,abstract,citationCount,isOpenAccess,openAccessPdf,venue,externalIds${oaParam}`;
-          const res = await fetch(url);
+          const res = await fetchT(url, 7000);
           if (!res.ok) return [];
           const data = await res.json();
           return (data.data || []).map((p, idx) => {
@@ -2439,7 +2522,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
       async function fetchCrossRefPapers(query) {
         try {
           const url = `https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=6`;
-          const res = await fetch(url);
+          const res = await fetchT(url, 7000);
           if (!res.ok) return [];
           const data = await res.json();
           const items = data?.message?.items || [];
