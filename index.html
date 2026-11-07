@@ -695,7 +695,7 @@
                 </span>
                 <span id="spanPdfZoomLevel" class="font-mono text-[11px] theme-text-secondary hidden sm:inline">100%</span>
                 <span class="text-[11px] theme-text-secondary hidden md:inline">
-                  <i class="fa-solid fa-arrows-left-right mr-1 theme-accent-text"></i>Sağa/Sola Kaydır: Sayfa • İki Parmak/Çift Dokun: Zoom
+                  <i class="fa-solid fa-arrows-left-right mr-1 theme-accent-text"></i>Çift Parmak Sağa/Sola Kaydır: Sayfa Değiştir • Çimdik/Çift Dokun: Zoom
                 </span>
               </div>
 
@@ -714,7 +714,7 @@
                 <label class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold cursor-pointer flex items-center gap-1 hover:border-amber-500" title="Cihazdan PDF Aç">
                   <i class="fa-solid fa-folder-open theme-accent-text"></i>
                   <span class="hidden sm:inline">PDF Seç</span>
-                  <input id="inputDirectPdfViewerFile" type="file" accept=".pdf" class="hidden" />
+                  <input id="inputDirectPdfViewerFile" type="file" accept=".pdf,.docx,.doc,.txt,.md,.rtf" class="hidden" />
                 </label>
 
                 <button id="btnTogglePdfExtraTools" class="tv-focusable px-2 py-1.5 rounded-lg theme-bg-secondary border theme-border hover:border-amber-500" title="Ek PDF Kontrolleri">
@@ -1277,7 +1277,7 @@
           journal: 'Computers & Geosciences / Ore Geology Reviews',
           citations: 64,
           doi: '10.1016/j.cageo.2024.105612',
-          oaUrl: 'https://arxiv.org/pdf/2106.01345.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2106.01345.pdf',
+          oaUrl: 'https://scholar.google.com/scholar?q=Hybrid+Machine+Learning+and+Ordinary+Kriging+for+3D+Ore+Grade+Estimation', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'en',
           tldr: {
@@ -1343,7 +1343,7 @@
           journal: 'International Journal of Rock Mechanics and Mining Sciences',
           citations: 89,
           doi: '10.1016/j.ijrmms.2024.105801',
-          oaUrl: 'https://arxiv.org/pdf/2203.05412.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2203.05412.pdf',
+          oaUrl: 'https://scholar.google.com/scholar?q=Dynamic+Load+Transfer+and+Shield+Support+Resistance+Optimization+Longwall', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'en',
           tldr: {
@@ -1402,7 +1402,7 @@
           journal: 'Process Safety and Environmental Protection / Fuel',
           citations: 51,
           doi: '10.1016/j.psep.2025.01.044',
-          oaUrl: 'https://arxiv.org/pdf/2301.07652.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2301.07652.pdf',
+          oaUrl: 'https://scholar.google.com/scholar?q=Multi-Sensor+Fusion+and+Spatio-Temporal+LSTM+Firedamp+Early+Warning', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'en',
           tldr: {
@@ -1462,7 +1462,7 @@
           journal: 'Safety Science / Tunnelling and Underground Space Technology',
           citations: 73,
           doi: '10.1016/j.ssci.2024.106488',
-          oaUrl: 'https://arxiv.org/pdf/2208.09123.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2208.09123.pdf',
+          oaUrl: 'https://scholar.google.com/scholar?q=Quantitative+Risk+Assessment+of+Underground+Mining+Accidents+Bayesian+HFACS', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'tr',
           tldr: {
@@ -2494,38 +2494,171 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         return words.filter(Boolean).join(' ');
       }
 
-      // Pure Topic News Search (NO forced 'maden OR mining' injection!)
-      async function fetchLiveNewsForTopic(query, langScope) {
+      // 4-Channel Real Topic News Engine (Direct XML RSS Parser + GDELT Open News API + AI News Synthesizer)
+      function parseGoogleRssXmlItems(xmlString, queryTag) {
+        if (!xmlString || !xmlString.includes('<item>')) return [];
         try {
-          const hl = langScope === 'en' ? 'en-US' : 'tr';
-          const gl = langScope === 'en' ? 'US' : 'TR';
-          const ceid = langScope === 'en' ? 'US:en' : 'TR:tr';
-          const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
-          const api = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-          const res = await fetch(api);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.items && data.items.length > 0) {
-              return data.items.slice(0, 8).map(item => ({
-                title: item.title,
-                source: item.author || 'Güncel Haber Kaynağı',
-                date: (item.pubDate || '').slice(0, 16) || 'Güncel',
-                url: item.link,
-                tag: query.slice(0, 22),
-                summary: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 200) + '...'
-              }));
+          const xmlDoc = new DOMParser().parseFromString(xmlString, 'text/xml');
+          const items = Array.from(xmlDoc.querySelectorAll('item'));
+          return items.slice(0, 8).map(it => {
+            const rawTitle = it.querySelector('title')?.textContent || 'Güncel Haber';
+            // Google News titles usually end with " - Kaynak Adı"
+            const parts = rawTitle.split(' - ');
+            const sourceName = it.querySelector('source')?.textContent || (parts.length > 1 ? parts.pop().trim() : 'Haber Kaynağı');
+            const cleanTitle = parts.join(' - ').trim() || rawTitle;
+            const link = it.querySelector('link')?.textContent || `https://news.google.com/search?q=${encodeURIComponent(queryTag)}`;
+            const pubDateRaw = it.querySelector('pubDate')?.textContent || '';
+            let formattedDate = 'Güncel';
+            if (pubDateRaw) {
+              const d = new Date(pubDateRaw);
+              if (!isNaN(d.getTime())) {
+                formattedDate = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+              } else {
+                formattedDate = pubDateRaw.slice(0, 16);
+              }
+            }
+            const descRaw = (it.querySelector('description')?.textContent || '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            return {
+              title: cleanTitle,
+              source: sourceName,
+              date: formattedDate,
+              url: link,
+              tag: queryTag.slice(0, 22),
+              summary: (descRaw && descRaw.length > 25 && descRaw !== cleanTitle)
+                ? descRaw.slice(0, 190) + '...'
+                : `${sourceName} kaynağında yayınlanan "${cleanTitle}" başlıklı güncel haber detayı.`
+            };
+          });
+        } catch (e) {
+          return [];
+        }
+      }
+
+      async function fetchLiveNewsForTopic(query, langScope) {
+        const cleanQ = (query || '').trim();
+        const hl = langScope === 'en' ? 'en-US' : 'tr';
+        const gl = langScope === 'en' ? 'US' : 'TR';
+        const ceid = langScope === 'en' ? 'US:en' : 'TR:tr';
+        const googleRssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQ)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
+        const bingRssUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cleanQ)}&format=rss`;
+
+        // Channel 1: Race multiple XML proxies in parallel to parse real Google News & Bing News RSS items directly in browser!
+        const xmlFetchRunners = [
+          // 1a. allorigins JSON wrapper (very reliable, CORS-free)
+          (async () => {
+            const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(googleRssUrl)}`);
+            if (!r.ok) throw new Error('ao fail');
+            const j = await r.json();
+            const parsed = parseGoogleRssXmlItems(j.contents, cleanQ);
+            if (parsed.length === 0) throw new Error('empty');
+            return parsed;
+          })(),
+          // 1b. codetabs raw XML proxy on Google News
+          (async () => {
+            const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(googleRssUrl)}`);
+            if (!r.ok) throw new Error('ct fail');
+            const txt = await r.text();
+            const parsed = parseGoogleRssXmlItems(txt, cleanQ);
+            if (parsed.length === 0) throw new Error('empty');
+            return parsed;
+          })(),
+          // 1c. codetabs raw XML proxy on Bing News RSS
+          (async () => {
+            const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(bingRssUrl)}`);
+            if (!r.ok) throw new Error('bing fail');
+            const txt = await r.text();
+            const parsed = parseGoogleRssXmlItems(txt, cleanQ);
+            if (parsed.length === 0) throw new Error('empty');
+            return parsed;
+          })(),
+          // 1d. rss2json fallback
+          (async () => {
+            const r = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(googleRssUrl)}`);
+            if (!r.ok) throw new Error('r2j fail');
+            const d = await r.json();
+            if (!d.items || d.items.length === 0) throw new Error('empty');
+            return d.items.slice(0, 8).map(item => ({
+              title: item.title,
+              source: item.author || 'Haber Merkezi',
+              date: (item.pubDate || '').slice(0, 16) || 'Güncel',
+              url: item.link,
+              tag: cleanQ.slice(0, 22),
+              summary: (item.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 190) + '...'
+            }));
+          })()
+        ];
+
+        try {
+          const winnerItems = await Promise.any(xmlFetchRunners);
+          if (winnerItems && winnerItems.length > 0) {
+            return winnerItems;
+          }
+        } catch (e) {}
+
+        // Channel 2: GDELT 2.0 Global News API (100% Direct CORS-Enabled Open News Archive!)
+        try {
+          const gdeltUrl = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(cleanQ)}&mode=artlist&maxrecords=8&format=json&sort=DateDesc`;
+          const gRes = await fetch(gdeltUrl);
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            if (gData.articles && gData.articles.length > 0) {
+              return gData.articles.map(art => {
+                const rawDate = art.seendate || '';
+                const dateFormatted = rawDate.length >= 8
+                  ? `${rawDate.slice(6, 8)}.${rawDate.slice(4, 6)}.${rawDate.slice(0, 4)}`
+                  : 'Güncel';
+                return {
+                  title: art.title || 'Güncel Sektör Haberi',
+                  source: art.domain || 'Uluslararası Basın',
+                  date: dateFormatted,
+                  url: art.url,
+                  tag: cleanQ.slice(0, 22),
+                  summary: `${art.domain || 'Haber kaynağı'} tarafından yayınlanan "${art.title}" başlıklı güncel haber.`
+                };
+              });
             }
           }
         } catch (e) {}
 
+        // Channel 3: If query is a very specific technical/academic phrase with no newspaper articles, use AI Key Pool to generate structured Recent Industry & News Developments for that exact topic!
+        if ((State.keyPool.keys || []).length > 0) {
+          try {
+            const sys = `Kullanıcı "${cleanQ}" konusunu arattı. Bu konuyla ilgili dünyadaki ve Türkiye'deki en güncel 4 sektörel/teknolojik gelişmeyi ve haber başlığını SADECE geçerli bir JSON dizisi (array) olarak döndür:
+[
+  {"title": "Somut ve gerçekçi güncel gelişme/haber başlığı", "source": "Sektörel / Kurumsal Kaynak Adı", "date": "2026 Güncel", "summary": "2 cümlelik somut haber özeti ve saha etkisi", "searchKeyword": "haberi aramak için 3 kelimelik terim"}
+]`;
+            const aiRes = await callAiWithKeyRotation(sys, `Konu: ${cleanQ}`);
+            const arrMatch = aiRes.text.match(/\[[\s\S]*\]/);
+            if (arrMatch) {
+              const parsedArr = JSON.parse(arrMatch[0]);
+              if (Array.isArray(parsedArr) && parsedArr.length > 0) {
+                return parsedArr.map(it => ({
+                  title: it.title,
+                  source: it.source || 'Sektörel İstihbarat',
+                  date: it.date || 'Güncel',
+                  url: `https://news.google.com/search?q=${encodeURIComponent(it.searchKeyword || it.title)}&hl=tr&gl=TR&ceid=TR:tr`,
+                  tag: cleanQ.slice(0, 22),
+                  summary: it.summary || ''
+                }));
+              }
+            }
+          } catch (e) {}
+        }
+
+        // Channel 4: Topic-adaptive multi-card fallback
         return [
           {
-            title: `"${query}" Konusunda Son Güncel Haberler ve Gelişmeler`,
-            source: 'Google Haberler Canlı Akış',
+            title: `${cleanQ}: Son Dönem Sektörel Uygulamalar ve Teknoloji Gelişmeleri`,
+            source: 'Sektörel Gündem Özeti',
             date: 'Güncel',
-            url: `https://news.google.com/search?q=${encodeURIComponent(query)}&hl=tr&gl=TR&ceid=TR:tr`,
-            tag: query.slice(0, 20),
-            summary: `"${query}" aramasıyla ilgili ulusal ve uluslararası basında çıkan en son haberleri doğrudan görüntülemek için tıklayın.`
+            url: `https://news.google.com/search?q=${encodeURIComponent(cleanQ)}&hl=tr&gl=TR&ceid=TR:tr`,
+            tag: cleanQ.slice(0, 20),
+            summary: `"${cleanQ}" alanındaki son saha uygulamaları, mevzuat güncellemeleri ve yeni teknolojik yatırımlar.`
           }
         ];
       }
@@ -2764,8 +2897,11 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
                   </button>
                 </div>
 
-                <a href="${paper.oaUrl || ('https://doi.org/' + paper.doi)}" target="_blank" rel="noopener noreferrer" class="tv-focusable px-3 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500">
-                  <i class="fa-solid fa-file-pdf text-red-400"></i> PDF / Kaynak ↗
+                <button data-open-pdf-tab="${paper.id}" class="tv-focusable px-3 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500" title="Uygulama İçi PDF Görünümünde Aç">
+                  <i class="fa-solid fa-file-pdf text-red-400"></i> PDF Görünümü
+                </button>
+                <a href="${paper.oaUrl || (paper.doi && paper.doi.startsWith('10.') ? ('https://doi.org/' + paper.doi) : ('https://scholar.google.com/scholar?q=' + encodeURIComponent(paper.title)))}" target="_blank" rel="noopener noreferrer" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500" title="Orijinal Yayıncı / Dergi Sayfasına Git">
+                  <i class="fa-solid fa-arrow-up-right-from-square theme-accent-text"></i> Kaynak ↗
                 </a>
               </div>
             </article>
@@ -2777,6 +2913,17 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           btn.addEventListener('click', () => {
             const p = State.papers.find(x => x.id === btn.getAttribute('data-open-reader'));
             if (p) openPaperInReader(p);
+          });
+        });
+
+        list.querySelectorAll('[data-open-pdf-tab]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const p = State.papers.find(x => x.id === btn.getAttribute('data-open-pdf-tab'));
+            if (p) {
+              openPaperInReader(p);
+              const pdfTabBtn = document.querySelector('[data-reader-tab="pdfframe"]');
+              if (pdfTabBtn) pdfTabBtn.click();
+            }
           });
         });
 
@@ -3548,19 +3695,32 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           }
         });
 
-        // Swipe Left/Right Page Turning + Pinch-to-Zoom + Double-Tap Zoom on #pdfCanvasViewport
+        // Swipe Left/Right Page Turning (1-Finger at 1x OR 2-Finger Swipe at ANY Zoom!) + Pinch-to-Zoom + Double-Tap Zoom
         const pdfViewportEl = document.getElementById('pdfCanvasViewport');
         let touchStartX = 0;
         let touchStartY = 0;
         let touchStartTime = 0;
         let initialPinchDist = null;
         let initialPinchScale = 1.0;
+        let twoFingerStartCenterX = null;
+        let twoFingerStartCenterY = null;
+        let twoFingerCurrentCenterX = null;
+        let twoFingerCurrentCenterY = null;
+        let twoFingerMaxSpreadChange = 0;
+        let twoFingerStartTime = 0;
         let lastTapTime = 0;
 
         function getTouchDistance(touches) {
           const dx = touches[0].clientX - touches[1].clientX;
           const dy = touches[0].clientY - touches[1].clientY;
           return Math.hypot(dx, dy);
+        }
+
+        function getTouchCenter(touches) {
+          return {
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2
+          };
         }
 
         if (pdfViewportEl) {
@@ -3571,6 +3731,13 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             if (e.touches.length === 2) {
               initialPinchDist = getTouchDistance(e.touches);
               initialPinchScale = pv.scale;
+              const c = getTouchCenter(e.touches);
+              twoFingerStartCenterX = c.x;
+              twoFingerStartCenterY = c.y;
+              twoFingerCurrentCenterX = c.x;
+              twoFingerCurrentCenterY = c.y;
+              twoFingerMaxSpreadChange = 0;
+              twoFingerStartTime = Date.now();
               return;
             }
 
@@ -3588,13 +3755,24 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             if (e.touches.length === 2 && initialPinchDist) {
               if (e.cancelable) e.preventDefault();
               const newDist = getTouchDistance(e.touches);
-              const ratio = newDist / initialPinchDist;
-              const nextScale = Math.min(2.75, Math.max(0.75, initialPinchScale * ratio));
-              document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(nextScale * 100)}%`;
-              const wrapper = document.getElementById('pdfStageWrapper');
-              if (wrapper) {
-                wrapper.style.transform = `scale(${(nextScale / pv.scale).toFixed(2)})`;
-                wrapper.style.transformOrigin = 'top center';
+              const spreadDelta = Math.abs(newDist - initialPinchDist);
+              if (spreadDelta > twoFingerMaxSpreadChange) {
+                twoFingerMaxSpreadChange = spreadDelta;
+              }
+              const c = getTouchCenter(e.touches);
+              twoFingerCurrentCenterX = c.x;
+              twoFingerCurrentCenterY = c.y;
+
+              // Only apply pinch scale visual transform if fingers are spreading/pinching (spreadDelta > 28px)
+              if (spreadDelta > 28) {
+                const ratio = newDist / initialPinchDist;
+                const nextScale = Math.min(2.75, Math.max(0.75, initialPinchScale * ratio));
+                document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(nextScale * 100)}%`;
+                const wrapper = document.getElementById('pdfStageWrapper');
+                if (wrapper) {
+                  wrapper.style.transform = `scale(${(nextScale / pv.scale).toFixed(2)})`;
+                  wrapper.style.transformOrigin = 'top center';
+                }
               }
             }
           }, { passive: false });
@@ -3603,9 +3781,32 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             const pv = State.pdfViewer;
             if (pv.snipMode || pv.viewMode === 'stack') return;
 
-            // Finish Pinch-to-Zoom and re-render crisp high-DPI canvas at new zoom level
-            if (initialPinchDist && e.touches.length < 2) {
+            // Handle 2-Finger Gesture Completion: Check if it was a 2-Finger Parallel Swipe (Page Turn at ANY Zoom!) vs Pinch-to-Zoom
+            if (initialPinchDist !== null && e.touches.length < 2) {
+              const dt2 = Date.now() - twoFingerStartTime;
+              const dx2 = (twoFingerCurrentCenterX ?? twoFingerStartCenterX) - twoFingerStartCenterX;
+              const dy2 = (twoFingerCurrentCenterY ?? twoFingerStartCenterY) - twoFingerStartCenterY;
               const wrapper = document.getElementById('pdfStageWrapper');
+
+              // If 2 fingers moved horizontally together (|dx2| > 45px) without strong pinching (spreadChange < 45px), turn the page even when zoomed in!
+              if (dt2 < 700 && Math.abs(dx2) > 45 && Math.abs(dx2) > Math.abs(dy2) * 1.25 && twoFingerMaxSpreadChange < 45) {
+                if (wrapper) wrapper.style.transform = '';
+                initialPinchDist = null;
+                if (dx2 < 0 && pv.pageNum < pv.totalPages) {
+                  pv.pageNum++;
+                  renderCurrentPdfPage();
+                  pdfViewportEl.scrollTop = 0;
+                  showToast(`✌ Çift Parmak Kaydırma: Sayfa ${pv.pageNum} / ${pv.totalPages}`, 'info');
+                } else if (dx2 > 0 && pv.pageNum > 1) {
+                  pv.pageNum--;
+                  renderCurrentPdfPage();
+                  pdfViewportEl.scrollTop = 0;
+                  showToast(`✌ Çift Parmak Kaydırma: Sayfa ${pv.pageNum} / ${pv.totalPages}`, 'info');
+                }
+                return;
+              }
+
+              // Otherwise finalize Pinch-to-Zoom
               if (wrapper && wrapper.style.transform) {
                 const match = wrapper.style.transform.match(/scale\(([^)]+)\)/);
                 if (match) {
@@ -3637,7 +3838,7 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
                 lastTapTime = now;
               }
 
-              // Horizontal Swipe Left/Right to change page (when not zoomed in horizontally scrolling, or fast swipe)
+              // Single-Finger Horizontal Swipe when unzoomed (scale <= 1.15)
               if (dt < 550 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4 && pv.scale <= 1.15) {
                 if (dx < 0 && pv.pageNum < pv.totalPages) {
                   pv.pageNum++;
@@ -4203,27 +4404,20 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             } catch (e) {}
           }
 
-          // 3. Fast arXiv Open-Access Full PDF lookup (guarantees a real multi-page scientific PDF with figures & tables when publisher locks their PDF!)
-          try {
-            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Açık erişim PDF sunucusundan tam metin PDF çekiliyor...`);
-            const cleanWords = (paper?.title || 'geostatistics mining')
-              .replace(/[^a-zA-Z0-9\s]/g, ' ')
-              .split(/\s+/)
-              .filter(w => w.length > 3)
-              .slice(0, 4)
-              .join(' ');
-            const axUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(cleanWords || 'rock mechanics')}&start=0&max_results=1`;
-            const axRes = await fetch(axUrl);
-            if (axRes.ok) {
-              const axXml = await axRes.text();
-              const idMatch = axXml.match(/<id>https?:\/\/arxiv\.org\/abs\/([^<]+)<\/id>/);
-              if (idMatch && idMatch[1]) {
-                const directArxivPdf = `https://export.arxiv.org/pdf/${idMatch[1].trim()}.pdf`;
-                const ab = await tryFetchPdfArrayBuffer(directArxivPdf);
-                if (ab) return ab;
+          // 3. Exact DOI / Exact Title lookup on Semantic Scholar & EuropePMC (ONLY if 100% matching this exact paper!)
+          if (cleanDoi && cleanDoi.includes('/')) {
+            try {
+              const s2Res = await fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(cleanDoi)}?fields=openAccessPdf`);
+              if (s2Res.ok) {
+                const s2Data = await s2Res.json();
+                const exactPdf = s2Data?.openAccessPdf?.url;
+                if (exactPdf) {
+                  const ab = await tryFetchPdfArrayBuffer(exactPdf);
+                  if (ab) return ab;
+                }
               }
-            }
-          } catch (e) {}
+            } catch (e) {}
+          }
 
           return null;
         }
@@ -4852,13 +5046,136 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           document.getElementById('pdfSnipActionBar').classList.add('hidden');
         });
 
-        // Direct PDF File Open inside PDF Viewer Tab
+        // Direct Multi-Format File Open (.PDF, .DOCX, .TXT, .MD) inside PDF Viewer Tab with Automatic AI Analysis!
         document.getElementById('inputDirectPdfViewerFile').addEventListener('change', async (e) => {
           const f = e.target.files?.[0];
           if (!f) return;
-          const buf = await f.arrayBuffer();
-          await openNativePdfInViewer(State.activePaper, buf);
-          showToast(`"${f.name}" tüm sayfalarıyla uygulama içi PDF görüntüleyicide açıldı!`, 'success');
+          const fileName = f.name || 'Yuklenen_Belge';
+          const ext = fileName.split('.').pop().toLowerCase();
+          const baseTitle = fileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ');
+
+          showToast(`"${fileName}" okunuyor ve AI irdelemesine hazırlanıyor...`, 'info');
+
+          try {
+            let fullTextCombined = '';
+            let parsedSections = [];
+            let pdfBuffer = null;
+
+            if (ext === 'pdf') {
+              pdfBuffer = await f.arrayBuffer();
+              if (window.pdfjsLib) {
+                const pdfDoc = await window.pdfjsLib.getDocument({ data: pdfBuffer.slice(0) }).promise;
+                const maxP = pdfDoc.numPages;
+                for (let p = 1; p <= maxP; p++) {
+                  const page = await pdfDoc.getPage(p);
+                  const tc = await page.getTextContent();
+                  const pageStr = tc.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+                  if (pageStr) {
+                    parsedSections.push({ heading: `Sayfa ${p} / ${maxP}`, body: pageStr });
+                    fullTextCombined += `\n\n[Sayfa ${p}]\n` + pageStr;
+                  }
+                }
+              }
+            } else if (ext === 'docx' || ext === 'doc') {
+              const arrayBuf = await f.arrayBuffer();
+              if (!window.mammoth) throw new Error('Word okuyucu (Mammoth.js) yüklenemedi.');
+              const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuf });
+              fullTextCombined = (result.value || '').trim();
+              const paras = fullTextCombined.split(/\n\s*\n/).filter(Boolean);
+              let chunk = [], chunkLen = 0, secIdx = 1;
+              for (const para of paras) {
+                chunk.push(para);
+                chunkLen += para.length;
+                if (chunkLen >= 1800) {
+                  parsedSections.push({ heading: `Sayfa / Bölüm ${secIdx} (Word)`, body: chunk.join('\n\n') });
+                  secIdx++;
+                  chunk = [];
+                  chunkLen = 0;
+                }
+              }
+              if (chunk.length > 0) {
+                parsedSections.push({ heading: `Sayfa / Bölüm ${secIdx} (Word)`, body: chunk.join('\n\n') });
+              }
+            } else {
+              // .txt, .md, .rtf
+              fullTextCombined = (await f.text()).trim();
+              const paras = fullTextCombined.split(/\n\s*\n/).filter(Boolean);
+              let chunk = [], chunkLen = 0, secIdx = 1;
+              for (const para of paras) {
+                chunk.push(para);
+                chunkLen += para.length;
+                if (chunkLen >= 1800) {
+                  parsedSections.push({ heading: `Sayfa / Bölüm ${secIdx} (Metin)`, body: chunk.join('\n\n') });
+                  secIdx++;
+                  chunk = [];
+                  chunkLen = 0;
+                }
+              }
+              if (chunk.length > 0) {
+                parsedSections.push({ heading: `Sayfa / Bölüm ${secIdx} (Metin)`, body: chunk.join('\n\n') });
+              }
+            }
+
+            if (parsedSections.length === 0) {
+              parsedSections = [{ heading: '1. Yüklenen Belge', body: fullTextCombined || 'Görsel ağırlıklı belge.' }];
+            }
+
+            const newPaper = createDynamicPaperObject({
+              id: 'direct-doc-' + Date.now(),
+              sourceDb: `Yerel ${ext.toUpperCase()} Dosyası`,
+              title: baseTitle,
+              authors: 'Yüklenen Belge',
+              year: new Date().getFullYear(),
+              journal: `${ext.toUpperCase()} Belgesi (${(f.size / 1024).toFixed(1)} KB)`,
+              citations: 0,
+              doi: fileName,
+              oaUrl: '',
+              pdfDirectUrl: '',
+              isOpenAccess: true,
+              lang: 'tr',
+              abstract: fullTextCombined.slice(0, 1200)
+            });
+
+            newPaper.fullTextSections = parsedSections;
+            newPaper.fullTextLoaded = true;
+            if (pdfBuffer) {
+              newPaper.uploadedArrayBuffer = pdfBuffer.slice(0);
+            } else {
+              ensureMultiPageVirtualSections(newPaper);
+            }
+
+            State.papers.unshift(newPaper);
+            State.activePaper = newPaper;
+            renderReaderContent();
+            await openNativePdfInViewer(newPaper, pdfBuffer);
+            showToast(`"${fileName}" (${parsedSections.length} sayfa/bölüm) açıldı! AI Danışman ile irdeleyebilirsiniz.`, 'success');
+
+            // Background AI Summary & Table extraction if user has API keys
+            if ((State.keyPool.keys || []).length > 0 && fullTextCombined.length > 50) {
+              try {
+                const sys = `Kullanıcı "${fileName}" adlı bir belge yükledi. İçeriğini inceleyerek SADECE geçerli bir JSON objesi döndür:
+{
+  "tldr": {
+    "problem": "Belgenin ele aldığı temel problem/konu (Türkçe)",
+    "method": "Kullanılan yöntem ve yaklaşım (Türkçe)",
+    "findings": "Temel bulgular ve sayısal veriler (Türkçe)",
+    "fieldUse": "Pratik uygulama alanı (Türkçe)"
+  }
+}`;
+                const aiRes = await callAiWithKeyRotation(sys, fullTextCombined.slice(0, 4500));
+                const jm = aiRes.text.match(/\{[\s\S]*\}/);
+                if (jm) {
+                  const parsed = JSON.parse(jm[0]);
+                  if (parsed.tldr) {
+                    newPaper.tldr = parsed.tldr;
+                    renderReaderContent();
+                  }
+                }
+              } catch (err) {}
+            }
+          } catch (err) {
+            showToast('Dosya açılırken hata oluştu: ' + err.message, 'error');
+          }
         });
 
         // Snipping Action Buttons
@@ -5137,7 +5454,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=5.5').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=6.0').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
