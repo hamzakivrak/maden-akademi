@@ -953,19 +953,22 @@
             <textarea id="bulkKeyTextarea" rows="7" placeholder="grok:&#10;gsk_hwM............&#10;gsk_nDixPD2m3A..........&#10;&#10;gemini:&#10;AIzaSyA2pZnnV.........&#10;AIzaSyB-AFYT.............." class="tv-focusable w-full p-3 rounded-xl theme-bg-card theme-text-primary border theme-border font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
           </div>
 
-          <!-- Rotation Priority & Actions -->
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2 text-xs">
-              <span class="font-semibold">Rotasyon Önceliği:</span>
-              <select id="keyPriorityMode" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border">
+          <!-- Rotation Priority & Actions (Mobile-Responsive, Never Overflows!) -->
+          <div class="space-y-2.5">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-1.5 text-xs">
+              <span class="font-semibold whitespace-nowrap">Rotasyon Önceliği:</span>
+              <select id="keyPriorityMode" class="tv-focusable w-full sm:flex-1 px-2.5 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border text-xs">
                 <option value="gemini_first">1. Gemini Havuzu ➔ 2. Groq (Llama) Havuzu (Önerilen)</option>
                 <option value="groq_first">1. Groq (Llama) Havuzu ➔ 2. Gemini Havuzu</option>
                 <option value="round_robin_all">Tüm Anahtarları Karma Döndür</option>
               </select>
             </div>
-            <div class="flex items-center gap-2">
-              <button id="btnParseAndSaveKeys" class="tv-focusable px-4 py-2 rounded-xl theme-accent-bg text-xs font-bold flex items-center gap-1.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btnParseAndSaveKeys" class="tv-focusable flex-1 sm:flex-none px-4 py-2 rounded-xl theme-accent-bg text-xs font-bold flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-check-double"></i> Anahtarları Ayrıştır &amp; Havuza Kaydet
+              </button>
+              <button id="btnResetKeyCooldowns" class="tv-focusable px-3 py-2 rounded-xl theme-bg-card border theme-border text-xs font-semibold text-emerald-400 hover:border-emerald-500 flex items-center gap-1" title="Beklemedeki tüm anahtarları tekrar Hazır durumuna getirir">
+                <i class="fa-solid fa-rotate"></i> Tümünü Hazır Yap
               </button>
               <button id="btnClearAllKeys" class="tv-focusable px-3 py-2 rounded-xl theme-bg-card border theme-border text-xs text-red-400">
                 Havuzu Sıfırla
@@ -1652,6 +1655,18 @@
 
       function updateKeyPoolUI() {
         const keys = State.keyPool.keys || [];
+        const now = Date.now();
+        // Automatically clear expired cooldowns so keys never stay stuck on "Kota Beklemede"!
+        let changed = false;
+        for (const k of keys) {
+          if (k.status !== 'ready' && (!k.cooldownUntil || k.cooldownUntil <= now)) {
+            k.status = 'ready';
+            k.cooldownUntil = 0;
+            changed = true;
+          }
+        }
+        if (changed) Storage.set('ma_key_pool', State.keyPool);
+
         const geminiCount = keys.filter(k => k.provider === 'gemini').length;
         const groqCount = keys.filter(k => k.provider === 'groq').length;
         const dot = document.getElementById('keyPoolDot');
@@ -1662,41 +1677,55 @@
         if (dot && summary) {
           if (keys.length > 0) {
             dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
-            summary.textContent = `Havuz: ${geminiCount} Gemini, ${groqCount} Groq`;
+            summary.textContent = `Key Havuzu: Hazır`;
           } else {
             dot.className = 'w-2 h-2 rounded-full bg-amber-400';
-            summary.textContent = 'Key Havuzu: Yerleşik Mod';
+            summary.textContent = 'Key Havuzu: Hazır';
           }
         }
         if (stats) {
-          stats.textContent = `${geminiCount} Gemini anahtarı, ${groqCount} Groq (Llama) anahtarı aktif`;
+          stats.textContent = `${geminiCount} Gemini, ${groqCount} Groq anahtarı aktif`;
         }
         if (listEl) {
           if (keys.length === 0) {
-            listEl.innerHTML = `<div class="p-3 rounded-xl theme-bg-card border theme-border text-xs theme-text-secondary">Henüz anahtar eklenmedi. Yukarıdaki kutuya <code>gemini:</code> ve <code>grok:</code> anahtarlarınızı yapıştırabilir veya <code>.txt</code> dosyası yükleyebilirsiniz. Anahtar girmeden de yerleşik akademik sentez motoru çalışır.</div>`;
+            listEl.innerHTML = `<div class="p-3 rounded-xl theme-bg-card border theme-border text-xs theme-text-secondary">Henüz anahtar eklenmedi. Yukarıdaki kutuya <code>gemini:</code> ve <code>grok:</code> anahtarlarınızı yapıştırabilir veya <code>.txt</code> dosyası yükleyebilirsiniz.</div>`;
           } else {
             listEl.innerHTML = keys.map((k, idx) => {
-              const masked = k.key.slice(0, 8) + '••••••••' + k.key.slice(-4);
+              const masked = k.key.slice(0, 6) + '••••' + k.key.slice(-4);
               const badgeColor = k.provider === 'gemini' ? 'bg-blue-500/20 text-blue-300' : 'bg-orange-500/20 text-orange-300';
-              const statusColor = k.status === 'ready' ? 'text-emerald-400' : 'text-amber-400';
+              const isReady = k.status === 'ready';
+              const statusColor = isReady ? 'text-emerald-400' : 'text-amber-400';
+              const secsLeft = k.cooldownUntil > now ? Math.ceil((k.cooldownUntil - now) / 1000) : 0;
               return `
-                <div class="px-3 py-2 rounded-xl theme-bg-card border theme-border flex items-center justify-between text-xs">
-                  <div class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] ${badgeColor}">${k.provider} #${idx + 1}</span>
-                    <span class="font-mono">${masked}</span>
+                <div data-reset-key-idx="${idx}" class="px-3 py-2 rounded-xl theme-bg-card border theme-border flex items-center justify-between gap-2 text-xs cursor-pointer hover:border-amber-500/50" title="Tıklayarak bu anahtarı anında Hazır durumuna getirebilirsiniz">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="px-2 py-0.5 rounded font-bold uppercase text-[10px] whitespace-nowrap flex-shrink-0 ${badgeColor}">${k.provider.toUpperCase()} #${idx + 1}</span>
+                    <span class="font-mono text-[11px] truncate">${masked}</span>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <span class="theme-text-secondary">Sorgu: <strong>${k.uses}</strong></span>
-                    <span class="${statusColor} font-semibold">● ${k.status === 'ready' ? 'Hazır' : 'Kota Beklemede'}</span>
+                  <div class="flex items-center gap-2.5 flex-shrink-0 whitespace-nowrap">
+                    <span class="theme-text-secondary text-[11px]">Sorgu: <strong>${k.uses}</strong></span>
+                    <span class="${statusColor} font-semibold text-[11px]">● ${isReady ? 'Hazır' : `Dinleniyor (${secsLeft}sn)`}</span>
                   </div>
                 </div>
               `;
             }).join('');
+
+            listEl.querySelectorAll('[data-reset-key-idx]').forEach(row => {
+              row.addEventListener('click', () => {
+                const i = parseInt(row.getAttribute('data-reset-key-idx'), 10);
+                if (keys[i]) {
+                  keys[i].status = 'ready';
+                  keys[i].cooldownUntil = 0;
+                  Storage.set('ma_key_pool', State.keyPool);
+                  updateKeyPoolUI();
+                  showToast(`${keys[i].provider.toUpperCase()} #${i + 1} anahtarı tekrar Hazır yapıldı.`, 'success');
+                }
+              });
+            });
           }
         }
       }
 
-      // Smart Key Rotator: tries Gemini pool round-robin first, then Groq pool round-robin
       // Smart Token Guard: truncates oversized prompts so a single call never exhausts TPM rate limits
       function enforceTokenBudget(text, maxChars = 4200) {
         if (!text) return '';
@@ -1711,7 +1740,24 @@
         userPrompt = enforceTokenBudget(userPrompt, 4800);
         const pool = State.keyPool;
         const now = Date.now();
-        const availableKeys = (pool.keys || []).filter(k => !k.cooldownUntil || k.cooldownUntil < now);
+
+        // First auto-recover any key whose 25-second cooldown has passed
+        for (const k of (pool.keys || [])) {
+          if (k.status !== 'ready' && (!k.cooldownUntil || k.cooldownUntil <= now)) {
+            k.status = 'ready';
+            k.cooldownUntil = 0;
+          }
+        }
+
+        let availableKeys = (pool.keys || []).filter(k => k.status === 'ready');
+        // If all keys were marked cooldown, reset them all so the user is never blocked!
+        if (availableKeys.length === 0 && (pool.keys || []).length > 0) {
+          for (const k of pool.keys) {
+            k.status = 'ready';
+            k.cooldownUntil = 0;
+          }
+          availableKeys = [...pool.keys];
+        }
 
         const geminiKeys = availableKeys.filter(k => k.provider === 'gemini');
         const groqKeys = availableKeys.filter(k => k.provider === 'groq');
@@ -1722,7 +1768,6 @@
         } else if (pool.priority === 'round_robin_all') {
           orderedCandidates = rotateSlice(availableKeys, pool.geminiIndex);
         } else {
-          // Default: Gemini first, rotated internally, then Groq fallback
           orderedCandidates = [...rotateSlice(geminiKeys, pool.geminiIndex), ...rotateSlice(groqKeys, pool.groqIndex)];
         }
 
@@ -1733,6 +1778,7 @@
               const text = await callGeminiApi(keyObj.key, systemPrompt, userPrompt, imageBase64);
               keyObj.uses += 1;
               keyObj.status = 'ready';
+              keyObj.cooldownUntil = 0;
               Storage.set('ma_key_pool', pool);
               updateKeyPoolUI();
               return { text, usedKey: `Gemini (${keyObj.key.slice(0, 7)}...)` };
@@ -1741,20 +1787,21 @@
               const text = await callGroqApi(keyObj.key, systemPrompt, userPrompt);
               keyObj.uses += 1;
               keyObj.status = 'ready';
+              keyObj.cooldownUntil = 0;
               Storage.set('ma_key_pool', pool);
               updateKeyPoolUI();
               return { text, usedKey: `Groq/Llama (${keyObj.key.slice(0, 7)}...)` };
             }
           } catch (err) {
             keyObj.status = 'cooldown';
-            keyObj.cooldownUntil = Date.now() + 60000;
+            keyObj.cooldownUntil = Date.now() + 25000; // 25s brief cooldown, auto-recovers!
             keyObj.lastError = err.message;
+            updateKeyPoolUI();
           }
         }
 
-        // Intelligent Built-in Domain Synthesis Engine when no external key or offline
         const fallbackText = generateLocalMiningExpertResponse(userPrompt, State.activePaper);
-        return { text: fallbackText, usedKey: 'Yerleşik MadenAkademi Sentez Motoru' };
+        return { text: fallbackText, usedKey: 'Yerleşik Akademik Sentez Motoru' };
       }
 
       function rotateSlice(arr, startIndex) {
@@ -1764,7 +1811,7 @@
       }
 
       async function callGeminiApi(apiKey, systemPrompt, userPrompt, imageBase64 = null) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const cleanKey = apiKey.replace(/[^\x21-\x7E]/g, '').trim();
         const userParts = [{ text: userPrompt }];
         if (imageBase64) {
           const cleanB64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
@@ -1775,43 +1822,64 @@
             }
           });
         }
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: userParts }],
-            generationConfig: { temperature: 0.35 }
-          })
-        });
-        if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
-        const data = await res.json();
-        const out = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!out) throw new Error('Boş Gemini yanıtı');
-        return out;
+        // Try gemini-2.5-flash first, then gemini-2.0-flash if rate-limited on 2.5
+        const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+        let lastErr = null;
+        for (const m of models) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: userParts }],
+                generationConfig: { temperature: 0.35 }
+              })
+            });
+            if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+            const data = await res.json();
+            const out = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!out) throw new Error('Boş Gemini yanıtı');
+            return out;
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        throw lastErr || new Error('Gemini hata');
       }
 
       async function callGroqApi(apiKey, systemPrompt, userPrompt) {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.35,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ]
-          })
-        });
-        if (!res.ok) throw new Error('Groq HTTP ' + res.status);
-        const data = await res.json();
-        const out = data?.choices?.[0]?.message?.content;
-        if (!out) throw new Error('Boş Groq yanıtı');
-        return out;
+        const cleanKey = apiKey.replace(/[^\x21-\x7E]/g, '').trim();
+        const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+        let lastErr = null;
+        for (const modelName of models) {
+          try {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${cleanKey}`
+              },
+              body: JSON.stringify({
+                model: modelName,
+                temperature: 0.35,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ]
+              })
+            });
+            if (!res.ok) throw new Error('Groq HTTP ' + res.status);
+            const data = await res.json();
+            const out = data?.choices?.[0]?.message?.content;
+            if (!out) throw new Error('Boş Groq yanıtı');
+            return out;
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        throw lastErr || new Error('Groq hata');
       }
 
       function generateLocalMiningExpertResponse(prompt, paper) {
@@ -1884,55 +1952,24 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         return translatedParts.length > 0 ? translatedParts.join(' ') : rawQuery;
       }
 
+      // Zero-Quota Query Expander: Uses free public translation + academic dictionary so searching NEVER drains the user's Gemini/Groq API keys!
       async function expandQueryWithAI(rawQuery) {
-        const pool = State.keyPool;
-        const hasLiveKeys = (pool.keys || []).length > 0;
-        if (!hasLiveKeys) {
-          // Even without AI keys, use public MyMemory translation API or dictionary so Turkish queries get real English global papers!
-          try {
-            const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(rawQuery) || Object.keys(TR_ACADEMIC_DICT).some(k => rawQuery.toLowerCase().includes(k));
-            if (hasTurkishChars) {
-              const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(rawQuery)}&langpair=tr|en`);
-              if (trRes.ok) {
-                const trData = await trRes.json();
-                const translated = (trData?.responseData?.translatedText || '').trim();
-                if (translated && translated.toLowerCase() !== rawQuery.toLowerCase()) {
-                  return {
-                    enQuery: translated,
-                    trQuery: rawQuery,
-                    newsQuery: rawQuery,
-                    usedAi: true
-                  };
-                }
+        try {
+          const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(rawQuery) || Object.keys(TR_ACADEMIC_DICT).some(k => rawQuery.toLowerCase().includes(k));
+          if (hasTurkishChars) {
+            const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(rawQuery)}&langpair=tr|en`);
+            if (trRes.ok) {
+              const trData = await trRes.json();
+              const translated = (trData?.responseData?.translatedText || '').trim();
+              if (translated && translated.toLowerCase() !== rawQuery.toLowerCase() && !translated.includes('MYMEMORY WARNING')) {
+                return {
+                  enQuery: translated,
+                  trQuery: rawQuery,
+                  newsQuery: rawQuery,
+                  usedAi: false
+                };
               }
             }
-          } catch (e) {}
-          const fallbackEn = buildFallbackEnglishQuery(rawQuery);
-          return {
-            enQuery: fallbackEn,
-            trQuery: rawQuery,
-            newsQuery: rawQuery,
-            usedAi: false
-          };
-        }
-
-        try {
-          const sys = `You are a scientific search query optimizer. Respond ONLY with a valid JSON object containing keys:
-- "enQuery": concise English academic search keywords for "${rawQuery}" (max 7 words, no quotes or boolean operators).
-- "trQuery": concise Turkish academic search keywords for "${rawQuery}".
-- "newsQuery": concise news search query matching the user's exact topic "${rawQuery}".
-CRITICAL RULE: Stick 100% to the user's exact subject ("${rawQuery}"). NEVER add mining or unrelated words if the user did not ask about mining.`;
-          const res = await callAiWithKeyRotation(sys, `User query: "${rawQuery}"`);
-          const jsonMatch = res.text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            return {
-              enQuery: parsed.enQuery || rawQuery,
-              trQuery: parsed.trQuery || rawQuery,
-              newsQuery: parsed.newsQuery || rawQuery,
-              usedAi: true,
-              provider: res.usedKey
-            };
           }
         } catch (e) {}
         return {
@@ -2035,9 +2072,7 @@ CRITICAL RULE: Stick 100% to the user's exact subject ("${rawQuery}"). NEVER add
           renderAcademicResults();
           renderNewsResults();
 
-          if (State.displayLangMode !== 'original' && (State.keyPool.keys || []).length > 0 && State.papers.length > 0) {
-            autoTranslateTopResultsInBackground(State.papers.slice(0, 8));
-          }
+          // Zero background API key drain: Titles are translated on-demand when clicking 'Tümünü AI ile Türkçeleştir'
 
           showToast(`"${q}" için ${State.papers.length} makale ve ${State.news.length} güncel haber bulundu.`, 'success');
         } catch (err) {
@@ -2421,65 +2456,8 @@ CRITICAL RULE: Stick 100% to the user's exact subject ("${rawQuery}"). NEVER add
           } catch (e) {}
         }
 
-        // Stage D: Use User's Gemini / Groq API Keys to build comprehensive Full-Article Analysis, Sections, Table & Chart specifically for THIS paper
-        if ((State.keyPool.keys || []).length > 0) {
-          try {
-            if (badge) badge.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles fa-spin"></i> AI Anahtarınızla Tam Metin Bölümleri Oluşturuluyor...`;
-            const sys = `Sen akademik bir başaraştırmacısın. Kullanıcının açtığı makaleyi inceleyip Türkçe olarak çok kapsamlı, doyurucu ve tamamen BU MAKALEYE ÖZEL bir teknik inceleme metni üret. Asla makalenin kendi konusu dışında başka bir alandan bahsetme!
-Yanıtını SADECE geçerli bir JSON objesi olarak ver:
-{
-  "trTitle": "Makalenin tam Türkçe başlığı",
-  "tldr": {
-    "problem": "Bu makalenin çözdüğü spesifik problem (2-3 cümle)",
-    "method": "Kullanılan spesifik metodoloji, veri seti ve algoritmalar",
-    "findings": "Elde edilen sayısal ve bilimsel bulgular",
-    "fieldUse": "Pratikte ve ilgili alanda nasıl kullanıldığı"
-  },
-  "sections": [
-    {"heading": "1. Giriş, Arka Plan ve Araştırma Problemi", "body": "En az 2 paragraf detaylı teknik açıklama..."},
-    {"heading": "2. Metodoloji, Deneysel Tasarım ve Algoritmik Yapı", "body": "En az 2 paragraf detaylı metodoloji açıklaması..."},
-    {"heading": "3. Bulgular, Sayısal Sonuçlar ve Kıyaslama", "body": "En az 2 paragraf detaylı bulgular ve değerlendirme..."},
-    {"heading": "4. Tartışma, Kısıtlar ve Uygulama Önerileri", "body": "Detaylı değerlendirme..."}
-  ],
-  "table": {
-    "headers": ["Parametre / Kriter", "Makaledeki Yaklaşım / Bulgu", "Teknik Açıklama ve Etki"],
-    "rows": [
-      ["...", "...", "..."],
-      ["...", "...", "..."],
-      ["...", "...", "..."]
-    ]
-  }
-}`;
-            const userMsg = `Makale Başlığı: ${paper.title}\nYazarlar: ${paper.authors}\nDergi ve Yıl: ${paper.journal} (${paper.year})\nDOI: ${paper.doi}\nMevcut Özet (Abstract): ${paper.abstract || 'Özet metni kısıtlı, başlık ve literatür bilgisinden kapsamlı analiz üret.'}`;
-            const aiRes = await callAiWithKeyRotation(sys, userMsg);
-            const jsonMatch = aiRes.text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              if (parsed.trTitle) paper.trTitle = parsed.trTitle;
-              if (parsed.tldr) paper.tldr = parsed.tldr;
-              if (Array.isArray(parsed.sections) && parsed.sections.length > 0) {
-                if (paper.abstract) {
-                  parsed.sections.push({
-                    heading: '5. Orijinal Akademik Özet (Original Abstract)',
-                    body: paper.abstract
-                  });
-                }
-                paper.fullTextSections = parsed.sections;
-              }
-              if (parsed.table && parsed.table.headers && parsed.table.rows) {
-                paper.tableData = parsed.table;
-              }
-              paper.fullTextLoaded = true;
-              if (badge) badge.innerHTML = `<i class="fa-solid fa-robot"></i> AI Derin Makale İncelemesi Hazır (${aiRes.usedKey})`;
-              renderReaderContent();
-              showToast('Makale bölümleri ve tabloları AI anahtarınızla Türkçe olarak hazırlandı!', 'success');
-              return;
-            }
-          } catch (e) {}
-        }
-
         if (badge) {
-          badge.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Tam Metin Avcısı Hazır`;
+          badge.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Hazır (Sıfır Kota Harcandı)`;
         }
       }
 
@@ -5567,6 +5545,21 @@ AIzaSyDu34KOrnekGemini4`;
           showToast(`${parsed.length} adet anahtar ayrıştırıldı ve rotasyon havuzuna kaydedildi!`, 'success');
         });
 
+        document.getElementById('btnResetKeyCooldowns')?.addEventListener('click', () => {
+          for (const k of (State.keyPool.keys || [])) {
+            k.status = 'ready';
+            k.cooldownUntil = 0;
+            k.uses = 0;
+          }
+          Storage.set('ma_key_pool', State.keyPool);
+          updateKeyPoolUI();
+          showToast('Tüm Gemini ve Groq anahtarları Hazır durumuna getirildi ve sayaçlar sıfırlandı!', 'success');
+        });
+
+        setInterval(() => {
+          if (State.currentView === 'settings') updateKeyPoolUI();
+        }, 5000);
+
         document.getElementById('btnClearAllKeys').addEventListener('click', () => {
           State.keyPool.keys = [];
           document.getElementById('bulkKeyTextarea').value = '';
@@ -5604,7 +5597,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=6.5').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=6.8').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
