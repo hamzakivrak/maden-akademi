@@ -2,7 +2,7 @@
   "id": "/maden-akademi/",
   "name": "MadenAkademi AI - Akademik & Sektörel Asistan",
   "short_name": "MadenAkademi",
-  "description": "Madencilikte Jeoistatistik, Yeraltı Kömür Tahkimat, Grizu ve İSG Akademik Makale Arama, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu.",
+  "description": "Akademik Makale Arama, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu.",
   "lang": "tr",
   "dir": "ltr",
   "start_url": "./index.html",

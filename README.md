@@ -1,3 +1,2 @@
-# MadenAkademi AI — GitHub, Gist, APK ve EXE Kurulum Kılavuzu
-
-Bu paket, **MadenAkademi AI** uygulamasını `https://hamzakivrak.github.io/maden-akademi/` adresinden tek merkezden yönetebilmeniz ve PWABuilder ile `%100 uyumlu` `.apk` (Telefon/TV) ve `.exe` (PC) üretebilmeniz için hazırlanmıştır.
+# MadenAkademi AI v3.2 — PDF, DOCX, TXT Dosya Yükleme & AI Tam Metin Motoru
+`index.html` dosyasını GitHub deponuza yüklediğinizde tüm cihazlarınızdaki uygulama otomatik güncellenir.

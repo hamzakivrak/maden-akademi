@@ -4,12 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>MadenAkademi AI — Akademik Literatür, Tam Metin Avcısı &amp; Sektörel İstihbarat</title>
+  <meta name="description" content="Akademik Makale Arama, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu" />
+  <meta name="theme-color" content="#f59e0b" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script>
     if (window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -920,23 +925,50 @@
 
   </main>
 
-  <!-- MODAL: UPLOAD CUSTOM TEXT / PDF CONTENT FOR AI INSPECTION -->
-  <div id="modalUploadCustom" class="hidden fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-    <div class="theme-bg-secondary border theme-border rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl">
+  <!-- MODAL: UPLOAD CUSTOM FILE (.PDF, .DOCX, .TXT, .MD) OR TEXT FOR AI INSPECTION -->
+  <div id="modalUploadCustom" class="hidden fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="theme-bg-secondary border theme-border rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl my-auto">
       <div class="flex items-center justify-between">
         <h3 class="font-bold text-base flex items-center gap-2">
-          <i class="fa-solid fa-file-import theme-accent-text"></i> Kendi Makale Metninizi / DOI veya PDF İçeriğinizi İnceleyin
+          <i class="fa-solid fa-file-arrow-up theme-accent-text"></i> Makale Dosyası Yükle (.PDF, .DOCX, .TXT) veya Metin Yapıştır
         </h3>
         <button id="btnCloseUploadModal" class="text-sm theme-text-secondary hover:theme-text-primary">✕</button>
       </div>
-      <div class="space-y-3 text-xs sm:text-sm">
-        <input id="customDocTitle" type="text" placeholder="Makale veya Rapor Başlığı (Örn: Kozlu Kömür Havzası Grizu Tahmini)" class="w-full px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border" />
-        <input id="customDocDoi" type="text" placeholder="Varsa DOI Numarası veya PDF Linki (Örn: 10.1016/j.ijrmms.2024.105721)" class="w-full px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border font-mono" />
-        <textarea id="customDocBody" rows="7" placeholder="Makalenin özetini, tam metnini veya incelemek istediğiniz bölümleri buraya yapıştırın..." class="w-full p-3 rounded-xl theme-bg-card theme-text-primary border theme-border"></textarea>
+
+      <!-- File Dropzone & Picker -->
+      <div id="customFileDropzone" class="border-2 border-dashed theme-border hover:border-amber-500 rounded-2xl p-4 text-center space-y-2 transition cursor-pointer theme-bg-card">
+        <div class="w-10 h-10 rounded-full theme-accent-soft mx-auto flex items-center justify-center text-lg">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </div>
+        <div class="text-xs sm:text-sm font-bold">
+          Bilgisayarınızdan veya Telefonunuzdan Makale Dosyası Seçin / Sürükleyin
+        </div>
+        <p class="text-[11px] theme-text-secondary">
+          Desteklenen Formatlar: <strong>.PDF</strong> (Tüm sayfalar otomatik okunur), <strong>.DOCX / .DOC</strong> (Word belgeleri), <strong>.TXT / .MD / .RTF</strong> (Düz metin)
+        </p>
+        <div class="pt-1">
+          <label class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl theme-accent-bg text-xs font-bold cursor-pointer shadow">
+            <i class="fa-solid fa-folder-open"></i> Dosya Seç (.pdf, .docx, .txt)
+            <input id="inputCustomArticleFile" type="file" accept=".pdf,.docx,.doc,.txt,.md,.rtf" class="hidden" />
+          </label>
+        </div>
+        <div id="customFileStatusText" class="text-xs font-semibold text-emerald-400 hidden"></div>
       </div>
-      <div class="flex justify-end gap-2">
-        <button id="btnCancelUploadModal" class="px-4 py-2 rounded-xl theme-bg-card border theme-border text-xs font-semibold">İptal</button>
-        <button id="btnOpenCustomInReader" class="px-4 py-2 rounded-xl theme-accent-bg text-xs font-bold">Okuma &amp; AI Ekranında Aç</button>
+
+      <div class="space-y-2.5 text-xs sm:text-sm">
+        <input id="customDocTitle" type="text" placeholder="Makale veya Rapor Başlığı (Dosya seçtiğinizde otomatik dolar)" class="w-full px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border" />
+        <input id="customDocDoi" type="text" placeholder="Varsa DOI Numarası veya Kaynak Notu (İsteğe bağlı)" class="w-full px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border font-mono" />
+        <textarea id="customDocBody" rows="6" placeholder="Dosya seçtiğinizde makalenin tam metni otomatik olarak buraya aktarılır. Dilerseniz doğrudan metin de yapıştırabilirsiniz..." class="w-full p-3 rounded-xl theme-bg-card theme-text-primary border theme-border"></textarea>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <span id="customDocCharCount" class="text-[11px] theme-text-secondary">Hazır • Yüklenen metin olduğu gibi AI ile analiz edilir.</span>
+        <div class="flex gap-2">
+          <button id="btnCancelUploadModal" class="px-4 py-2 rounded-xl theme-bg-card border theme-border text-xs font-semibold">İptal</button>
+          <button id="btnOpenCustomInReader" class="px-4 py-2 rounded-xl theme-accent-bg text-xs font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Okuma &amp; AI Ekranında Aç
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -2840,7 +2872,7 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         appendAiMessage('user', q);
 
         const p = State.activePaper;
-        const fullContext = (p?.fullTextSections || []).map(s => `${s.heading}: ${s.body}`).join('\n').slice(0, 8000);
+        const fullContext = (p?.fullTextSections || []).map(s => `${s.heading}: ${s.body}`).join('\n').slice(0, 18000);
         const sysPrompt = `Sen incelenen makalenin bilim dalında uzman kıdemli bir Akademisyen, Profesör ve Başaraştırmacısın. Kullanıcının incelediği makale: "${p?.title || ''}" (${p?.year || ''}, Dergi: ${p?.journal || ''}). Makale İçeriği/Özeti: ${fullContext || p?.abstract || ''}. Sadece bu makalenin konusu ve bilimsel disiplini çerçevesinde kal; yanıtlarını her zaman Türkçe, anlaşılır, bilimsel olarak tam doğru ve Markdown tabloları/maddeleri kullanarak ver.`;
 
         const res = await callAiWithKeyRotation(sysPrompt, q);
@@ -3231,29 +3263,237 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           box.innerHTML = `<div class="font-bold theme-accent-text mb-1">⚡ AI Sektör Gündem Özeti (${res.usedKey})</div><div>${marked.parse(res.text)}</div>`;
         });
 
-        // Upload Local / Custom Text Modal
+        // Upload Local File (.PDF, .DOCX, .TXT, .MD) or Custom Text Modal
         const modalUpload = document.getElementById('modalUploadCustom');
+        let uploadedParsedSections = null;
+        let uploadedPdfBlobUrl = '';
+
         document.getElementById('btnUploadLocalPdf').addEventListener('click', () => modalUpload.classList.remove('hidden'));
         document.getElementById('btnCloseUploadModal').addEventListener('click', () => modalUpload.classList.add('hidden'));
         document.getElementById('btnCancelUploadModal').addEventListener('click', () => modalUpload.classList.add('hidden'));
-        document.getElementById('btnOpenCustomInReader').addEventListener('click', () => {
-          const title = document.getElementById('customDocTitle').value.trim() || 'Özel Yüklenen Makale / Rapor';
-          const doi = document.getElementById('customDocDoi').value.trim() || 'Özel-Belge';
-          const body = document.getElementById('customDocBody').value.trim() || 'İçerik girilmedi.';
-          const newDoc = {
-            ...CURATED_PAPERS[0],
+
+        const fileInputEl = document.getElementById('inputCustomArticleFile');
+        const dropzoneEl = document.getElementById('customFileDropzone');
+        const statusTextEl = document.getElementById('customFileStatusText');
+        const charCountEl = document.getElementById('customDocCharCount');
+
+        async function processUploadedArticleFile(file) {
+          if (!file) return;
+          const fileName = file.name || 'Yuklenen_Makale';
+          const baseTitle = fileName.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ');
+          const ext = fileName.split('.').pop().toLowerCase();
+
+          document.getElementById('customDocTitle').value = baseTitle;
+          document.getElementById('customDocDoi').value = `Yerel Dosya (${ext.toUpperCase()} • ${(file.size / 1024).toFixed(1)} KB)`;
+          statusTextEl.classList.remove('hidden');
+          statusTextEl.textContent = `⏳ "${fileName}" okunuyor ve tam metni ayrıştırılıyor...`;
+          uploadedParsedSections = null;
+
+          try {
+            if (ext === 'pdf') {
+              if (uploadedPdfBlobUrl) URL.revokeObjectURL(uploadedPdfBlobUrl);
+              uploadedPdfBlobUrl = URL.createObjectURL(file);
+              const arrayBuf = await file.arrayBuffer();
+              if (!window.pdfjsLib) throw new Error('PDF.js kütüphanesi yüklenemedi.');
+              const pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuf }).promise;
+              const numPages = pdfDoc.numPages;
+              const pageSections = [];
+              let combinedText = '';
+
+              for (let p = 1; p <= numPages; p++) {
+                statusTextEl.textContent = `⏳ PDF Okunuyor: Sayfa ${p} / ${numPages}...`;
+                const page = await pdfDoc.getPage(p);
+                const textContent = await page.getTextContent();
+                const pageStr = textContent.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+                if (pageStr) {
+                  pageSections.push({
+                    heading: `Sayfa ${p} / ${numPages}`,
+                    body: pageStr
+                  });
+                  combinedText += `\n\n--- [SAYFA ${p}] ---\n` + pageStr;
+                }
+              }
+
+              uploadedParsedSections = pageSections.length > 0
+                ? pageSections
+                : [{ heading: '1. PDF Belgesi', body: 'Bu PDF taranmış görüntü (resim) formatında olabilir. Canlı PDF sekmesinden görüntüleyebilirsiniz.' }];
+
+              document.getElementById('customDocBody').value = combinedText.trim();
+              statusTextEl.textContent = `✔ PDF Başarıyla Çözümlendi: ${numPages} Sayfa (${combinedText.length.toLocaleString('tr-TR')} karakter)`;
+              charCountEl.textContent = `${numPages} sayfa PDF tam metni hazır • AI değerlendirmesine uygun.`;
+              showToast(`PDF (${numPages} sayfa) tam metin olarak başarıyla okundu!`, 'success');
+
+            } else if (ext === 'docx' || ext === 'doc') {
+              const arrayBuf = await file.arrayBuffer();
+              if (!window.mammoth) throw new Error('Word (Mammoth.js) okuyucu yüklenemedi.');
+              const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuf });
+              const rawText = (result.value || '').trim();
+              document.getElementById('customDocBody').value = rawText;
+
+              // Split long Word document into logical sections (~3500 chars each)
+              const paras = rawText.split(/\n\s*\n/).filter(Boolean);
+              const sections = [];
+              let chunk = [];
+              let chunkLen = 0;
+              let secIdx = 1;
+              for (const para of paras) {
+                chunk.push(para);
+                chunkLen += para.length;
+                if (chunkLen >= 3000) {
+                  sections.push({
+                    heading: `Bölüm ${secIdx} (Word Tam Metin)`,
+                    body: chunk.join('\n\n')
+                  });
+                  secIdx++;
+                  chunk = [];
+                  chunkLen = 0;
+                }
+              }
+              if (chunk.length > 0) {
+                sections.push({
+                  heading: `Bölüm ${secIdx} (Word Tam Metin)`,
+                  body: chunk.join('\n\n')
+                });
+              }
+              uploadedParsedSections = sections;
+              statusTextEl.textContent = `✔ Word (.docx) Dosyası Okundu: ${rawText.length.toLocaleString('tr-TR')} karakter (${sections.length} bölüm)`;
+              charCountEl.textContent = `Word belgesi tam metni hazır (${rawText.length.toLocaleString('tr-TR')} karakter).`;
+              showToast('Word (.docx) makalesi başarıyla ayrıştırıldı!', 'success');
+
+            } else {
+              // .txt, .md, .rtf
+              const text = await file.text();
+              document.getElementById('customDocBody').value = text;
+              const paras = text.split(/\n\s*\n/).filter(Boolean);
+              const sections = [];
+              let chunk = [];
+              let chunkLen = 0;
+              let secIdx = 1;
+              for (const para of paras) {
+                chunk.push(para);
+                chunkLen += para.length;
+                if (chunkLen >= 3500) {
+                  sections.push({ heading: `Bölüm ${secIdx} (Metin Dosyası)`, body: chunk.join('\n\n') });
+                  secIdx++;
+                  chunk = [];
+                  chunkLen = 0;
+                }
+              }
+              if (chunk.length > 0) {
+                sections.push({ heading: `Bölüm ${secIdx} (Metin Dosyası)`, body: chunk.join('\n\n') });
+              }
+              uploadedParsedSections = sections;
+              statusTextEl.textContent = `✔ Metin Dosyası Okundu: ${text.length.toLocaleString('tr-TR')} karakter`;
+              charCountEl.textContent = `${text.length.toLocaleString('tr-TR')} karakter metin yüklendi.`;
+              showToast('Metin dosyası başarıyla yüklendi!', 'success');
+            }
+          } catch (err) {
+            statusTextEl.textContent = `❌ Dosya okuma hatası: ${err.message}`;
+            showToast('Dosya okunurken hata oluştu: ' + err.message, 'error');
+          }
+        }
+
+        fileInputEl.addEventListener('change', (e) => {
+          const f = e.target.files?.[0];
+          if (f) processUploadedArticleFile(f);
+        });
+
+        dropzoneEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dropzoneEl.classList.add('border-amber-500');
+        });
+        dropzoneEl.addEventListener('dragleave', () => {
+          dropzoneEl.classList.remove('border-amber-500');
+        });
+        dropzoneEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropzoneEl.classList.remove('border-amber-500');
+          const f = e.dataTransfer?.files?.[0];
+          if (f) processUploadedArticleFile(f);
+        });
+
+        document.getElementById('customDocBody').addEventListener('input', (e) => {
+          const len = e.target.value.length;
+          charCountEl.textContent = `${len.toLocaleString('tr-TR')} karakter metin hazır.`;
+        });
+
+        document.getElementById('btnOpenCustomInReader').addEventListener('click', async () => {
+          const title = document.getElementById('customDocTitle').value.trim() || 'Yüklenen Akademik Makale / Rapor';
+          const doi = document.getElementById('customDocDoi').value.trim() || 'Yerel-Belge';
+          const body = document.getElementById('customDocBody').value.trim();
+          if (!body) {
+            showToast('Lütfen bir dosya (.pdf, .docx, .txt) seçin veya incelemek istediğiniz metni yapıştırın.', 'error');
+            return;
+          }
+
+          const sectionsToUse = (uploadedParsedSections && uploadedParsedSections.length > 0)
+            ? uploadedParsedSections
+            : [{ heading: '1. Yüklenen Tam Metin İçeriği', body }];
+
+          const customPaper = createDynamicPaperObject({
             id: 'custom-' + Date.now(),
+            sourceDb: 'Yüklenen Dosya (Tam Metin)',
             title,
-            trTitle: title,
-            doi,
-            year: 2026,
-            journal: 'Kullanıcı Belgesi',
-            abstract: body.slice(0, 300),
-            fullTextSections: [{ heading: '1. Yüklenen Tam Metin İçeriği', body }]
-          };
-          State.papers.unshift(newDoc);
+            authors: 'Kullanıcı Tarafından Yüklenen Belge',
+            year: new Date().getFullYear(),
+            journal: doi,
+            citations: 0,
+            doi: doi,
+            oaUrl: uploadedPdfBlobUrl || '',
+            pdfDirectUrl: uploadedPdfBlobUrl || '',
+            isOpenAccess: true,
+            lang: 'tr',
+            abstract: body.slice(0, 1200)
+          });
+
+          customPaper.fullTextSections = sectionsToUse;
+          customPaper.fullTextLoaded = true; // Preserve all extracted pages/paragraphs verbatim!
+
+          State.papers.unshift(customPaper);
+          renderAcademicResults();
           modalUpload.classList.add('hidden');
-          openPaperInReader(newDoc);
+          openPaperInReader(customPaper);
+
+          // Automatically analyze the uploaded full text with AI keys (if available) to populate the 4-point TL;DR & Table without overwriting the verbatim text!
+          if ((State.keyPool.keys || []).length > 0) {
+            const badge = document.getElementById('readerCascadeBadge');
+            if (badge) badge.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles fa-spin"></i> Yüklenen Dosya AI İle Analiz Ediliyor...`;
+            try {
+              const sampleText = body.slice(0, 10000);
+              const sys = `Kullanıcı kendi makale dosyasını yükledi. Yüklenen tam metni inceleyerek SADECE geçerli bir JSON objesi döndür:
+{
+  "tldr": {
+    "problem": "Makalenin ele aldığı temel problem (2-3 cümle, Türkçe)",
+    "method": "Kullanılan yöntem, veri ve analizler (Türkçe)",
+    "findings": "Temel sayısal ve bilimsel bulgular (Türkçe)",
+    "fieldUse": "Pratikte ve sahada/uygulamada ne işe yaradığı (Türkçe)"
+  },
+  "table": {
+    "headers": ["Bölüm / Kriter", "Makaledeki Bulgular ve Veriler", "Değerlendirme"],
+    "rows": [
+      ["...", "...", "..."],
+      ["...", "...", "..."],
+      ["...", "...", "..."],
+      ["...", "...", "..."]
+    ]
+  }
+}`;
+              const aiRes = await callAiWithKeyRotation(sys, `Makale Başlığı: ${title}\n\nTam Metin İçeriği:\n${sampleText}`);
+              const jsonMatch = aiRes.text.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.tldr) customPaper.tldr = parsed.tldr;
+                if (parsed.table && parsed.table.headers && parsed.table.rows) customPaper.tableData = parsed.table;
+                renderReaderContent();
+              }
+              if (badge) badge.innerHTML = `<i class="fa-solid fa-check-double"></i> Tam Metin Yüklendi (${sectionsToUse.length} Bölüm/Sayfa) + AI Özeti Hazır`;
+            } catch (e) {
+              if (badge) badge.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> Tam Metin Yüklendi (${sectionsToUse.length} Bölüm/Sayfa)`;
+            }
+          } else {
+            const badge = document.getElementById('readerCascadeBadge');
+            if (badge) badge.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> Tam Metin Yüklendi (${sectionsToUse.length} Bölüm/Sayfa)`;
+          }
         });
 
         // Add Custom Dial Modal
@@ -3563,6 +3803,11 @@ AIzaSyDu34KOrnekGemini4`;
         URL.revokeObjectURL(url);
       }
 
+            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js').catch(function() {});
+        });
+      }
       window.addEventListener('DOMContentLoaded', initApp);
     })();
   </script>
