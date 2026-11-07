@@ -5277,6 +5277,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             await page.render({ canvasContext: ctx, viewport }).promise;
             const textContent = await page.getTextContent();
             pv.currentPageTextItems = textContent.items || [];
+            pv.currentPageTextStyles = textContent.styles || {};
           } else {
             const p = State.activePaper;
             const cssW = Math.floor(availW);
@@ -5330,10 +5331,37 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         State.pdfTranslateCache = State.pdfTranslateCache || new Map();
         let pdfOverlayJob = 0;
 
+        // Sayfadaki gerçek sütun boşluklarını (gutter) bulur: iki sütunlu makalelerde sütunları ayırmak için
+        function detectPdfGutters(raw, vp) {
+          const W = Math.ceil(vp.width);
+          if (!raw.length || W < 50) return [];
+          const cover = new Uint16Array(W + 2);
+          for (const r of raw) {
+            const a = Math.max(0, Math.floor(r.x)), b = Math.min(W, Math.ceil(r.x + r.w));
+            for (let i = a; i < b; i++) cover[i]++;
+          }
+          const hs = raw.map(r => r.h).sort((x, y) => x - y);
+          const medH = hs[Math.floor(hs.length / 2)] || 10;
+          const lo = Math.floor(W * 0.18), hi = Math.ceil(W * 0.82);
+          const limit = Math.max(1, raw.length * 0.01);
+          const gutters = [];
+          let start = -1;
+          for (let i = lo; i <= hi; i++) {
+            const empty = cover[i] <= limit;
+            if (empty && start < 0) start = i;
+            if ((!empty || i === hi) && start >= 0) {
+              if (i - start >= 1.0 * medH) gutters.push({ a: start, b: i });
+              start = -1;
+            }
+          }
+          return gutters;
+        }
+
         function buildPdfTextBlocks(pv) {
           const vp = pv.currentPageViewport;
           if (!vp || !window.pdfjsLib) return [];
           const util = window.pdfjsLib.Util;
+          const styles = pv.currentPageTextStyles || {};
           const raw = [];
           for (const it of (pv.currentPageTextItems || [])) {
             if (!it.str || !it.str.trim() || !it.transform) continue;
@@ -5341,41 +5369,54 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             if (Math.abs(t[1]) > 0.2 * Math.abs(t[0])) continue; // dönük metni atla
             const h = Math.abs(t[3]);
             if (!h || h < 3) continue;
-            raw.push({ x: t[4], y: t[5], w: (it.width || 0) * vp.scale, h, str: it.str });
+            const fam = (styles[it.fontName] && styles[it.fontName].fontFamily) || 'sans-serif';
+            raw.push({ x: t[4], y: t[5], w: (it.width || 0) * vp.scale, h, str: it.str, fam });
           }
           raw.sort((a, b) => a.y - b.y || a.x - b.x);
+          const gutters = detectPdfGutters(raw, vp);
 
-          // 1) satırlar
+          // 1) satırlar (yukarıdan aşağı; baseline farkı küçükse aynı satır — üst simge/atıf numaraları dahil)
           const lines = [];
           for (const r of raw) {
             const last = lines[lines.length - 1];
             if (last && Math.abs(r.y - last.y) <= 0.45 * Math.max(r.h, last.h)) last.items.push(r);
             else lines.push({ y: r.y, items: [r] });
           }
-          // 2) satırları, büyük boşluklarda (tablo hücresi / sütun) parçalara böl
+
+          // 2) satırı yalnızca GERÇEK boşluklarda böl: sütun aralığı ya da çok büyük (tablo hücresi) boşluk.
+          //    İki yana yaslı metindeki geniş kelime boşlukları satırı BÖLMEZ.
           const segs = [];
+          const splitHere = (prevRight, nextLeft, h) => {
+            const gap = nextLeft - prevRight;
+            if (gap > 3.2 * h) return true;
+            if (gap > 0.5 * h) {
+              for (const g of gutters) {
+                const mid = (g.a + g.b) / 2;
+                if (mid > prevRight && mid < nextLeft) return true;
+              }
+            }
+            return false;
+          };
           for (const ln of lines) {
             ln.items.sort((a, b) => a.x - b.x);
             let cur = null;
             for (const it of ln.items) {
-              if (cur) {
-                const gap = it.x - cur.right;
-                if (gap > 1.0 * Math.max(it.h, cur.h)) { segs.push(cur); cur = null; }
-              }
+              if (cur && splitHere(cur.right, it.x, Math.max(it.h, cur.h))) { segs.push(cur); cur = null; }
               if (!cur) {
-                cur = { left: it.x, right: it.x + it.w, y: ln.y, h: it.h, text: it.str, maxH: it.h };
+                cur = { left: it.x, right: it.x + it.w, y: ln.y, h: it.h, text: it.str, fams: { [it.fam]: 1 } };
               } else {
                 const gap = it.x - cur.right;
                 const needSpace = gap > 0.15 * it.h && !/\s$/.test(cur.text) && !/^\s/.test(it.str);
                 cur.text += (needSpace ? ' ' : '') + it.str;
-                cur.right = it.x + it.w;
-                cur.maxH = Math.max(cur.maxH, it.h);
+                cur.right = Math.max(cur.right, it.x + it.w);
                 cur.h = Math.max(cur.h, it.h);
+                cur.fams[it.fam] = (cur.fams[it.fam] || 0) + it.str.length;
               }
             }
             if (cur) segs.push(cur);
           }
           for (const sg of segs) {
+            // satır yüksekliği: üst simge/atıf yüzünden şişmesin diye ana metin boyutunu kullan
             sg.top = sg.y - sg.h * 0.92;
             sg.bottom = sg.y + sg.h * 0.25;
             sg.text = sg.text.replace(/\s+/g, ' ').trim();
@@ -5391,7 +5432,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
               const vgap = sg.top - L.bottom;
               const lWidth = L.right - L.left;
               if (vgap < -0.5 * sg.h || vgap > 0.9 * sg.h) continue;
-              if (Math.abs(sg.left - b.left) > 2.2 * sg.h) continue;
+              if (Math.abs(sg.left - b.left) > 3.0 * sg.h) continue;
               if (Math.abs(sg.h - L.h) > 0.25 * L.h) continue;
               if (lWidth < 0.28 * vp.width) continue;
               if (!(sg.left < L.right && sg.right > L.left)) continue;
@@ -5421,8 +5462,15 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             const letters = (text.match(/\p{L}/gu) || []).length;
             if (letters < 4 || letters / text.length < 0.55) continue;      // formül/sayı/simge ağırlıklı
             if (/^(https?:|doi:|www\.)/i.test(text) || /^[\w.+-]+@[\w-]+\./.test(text)) continue;
-            const hs = b.segs.map(x => x.h);
-            b.h = hs.reduce((a, c) => a + c, 0) / hs.length;
+            const hs = b.segs.map(x => x.h).sort((x, y) => x - y);
+            b.h = hs[Math.floor(hs.length / 2)];                              // medyan: üst simgeler boyutu şişirmesin
+            const n = b.segs.length;
+            let pitch = n > 1 ? (b.segs[n - 1].y - b.segs[0].y) / (n - 1) : b.h * 1.2;
+            b.pitch = Math.min(Math.max(pitch, b.h * 1.05), b.h * 2.6);
+            const famCount = {};
+            for (const sg of b.segs) for (const [f, c] of Object.entries(sg.fams)) famCount[f] = (famCount[f] || 0) + c;
+            const topFam = Object.entries(famCount).sort((x, y) => y[1] - x[1])[0];
+            b.serif = !!(topFam && /serif/i.test(topFam[0]) && !/sans/i.test(topFam[0]));
             b.text = text;
             out.push(b);
           }
@@ -5470,19 +5518,24 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           ovCtx.fillRect(x, y, w, hgt);
           ovCtx.fillStyle = bg.lum < 110 ? '#f8fafc' : '#111827';
           ovCtx.textBaseline = 'top';
-          let fs = blk.h * 0.98;
-          const minFs = Math.max(5 * dpr, blk.h * 0.5);
+          const family = blk.serif ? '"Times New Roman", Times, Georgia, serif' : 'Arial, "Helvetica Neue", sans-serif';
+          const baseFs = blk.h * (blk.serif ? 1.0 : 0.96);
+          let fs = baseFs;
+          let pitch = blk.pitch;
+          const minFs = Math.max(5 * dpr, blk.h * 0.55);
           let lines;
           for (;;) {
-            ovCtx.font = `${fs}px Arial, "Helvetica Neue", sans-serif`;
+            ovCtx.font = `${fs}px ${family}`;
             lines = wrapCanvasLines(ovCtx, tr, w - pad * 2);
-            if (lines.length * fs * 1.17 <= hgt + blk.h * 0.35 || fs <= minFs) break;
-            fs *= 0.94;
+            const needed = (lines.length - 1) * pitch + fs * 1.1;
+            if (needed <= hgt + blk.h * 0.2 || fs <= minFs) break;
+            fs *= 0.95;
+            pitch = Math.max(fs * 1.12, blk.pitch * (fs / baseFs));
           }
           let ty = y + pad * 0.4;
           for (const ln of lines) {
             ovCtx.fillText(ln, x + pad, ty);
-            ty += fs * 1.17;
+            ty += pitch;
           }
         }
 
