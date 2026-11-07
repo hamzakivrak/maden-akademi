@@ -381,6 +381,9 @@
             <button id="btnExecuteSearch" class="tv-focusable flex-1 sm:flex-none px-4 py-2.5 rounded-xl theme-accent-bg font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow">
               <i class="fa-solid fa-bolt"></i><span>Ara &amp; İrdele</span>
             </button>
+            <button id="btnExecuteSearchAi" class="tv-focusable px-3 py-2.5 rounded-xl theme-bg-card border theme-border text-xs font-bold flex items-center gap-1.5 hover:border-amber-500" title="Arama kelimesini yapay zekaya çevirtip genişletir (API kotası kullanır)">
+              <i class="fa-solid fa-wand-magic-sparkles theme-accent-text"></i><span class="hidden md:inline">AI ile Ara</span>
+            </button>
             <button id="btnToggleSearchFilters" class="tv-focusable px-3 py-2.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5 hover:border-amber-500" title="Arama Filtreleri & Dil Seçenekleri">
               <i class="fa-solid fa-filter theme-accent-text"></i><span class="hidden md:inline">Filtreler</span>
             </button>
@@ -446,6 +449,9 @@
             <div class="flex items-center gap-2">
               <button id="btnBatchTranslate" class="tv-focusable text-xs px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 flex items-center gap-1">
                 <i class="fa-solid fa-language theme-accent-text"></i> Tümünü AI ile Türkçeleştir
+              </button>
+              <button id="btnBatchTranslateFree" class="tv-focusable text-xs px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-emerald-500 flex items-center gap-1" title="Kota harcamaz">
+                <i class="fa-solid fa-language text-emerald-400"></i> Başlıkları Çevir (Ücretsiz)
               </button>
               <button id="btnUploadLocalPdf" class="tv-focusable text-xs px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 flex items-center gap-1">
                 <i class="fa-solid fa-file-arrow-up theme-accent-text"></i> Kendi Metnini/PDF'ini İncele
@@ -577,6 +583,13 @@
           <button id="btnCloseHunterDrawer" class="text-xs theme-text-secondary hover:theme-text-primary">Kapat</button>
         </div>
         <div id="hunterStagesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 text-xs"></div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t theme-border text-xs">
+          <span class="theme-text-secondary">Kaynaktan PDF'i elle indirdiyseniz bu makaleye bağlayın:</span>
+          <label class="tv-focusable px-3 py-1.5 rounded-lg theme-accent-bg font-bold cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-file-arrow-up"></i> İndirdiğim PDF'i Bu Makaleye Yükle
+            <input id="inputHunterPdfFile" type="file" accept=".pdf" class="hidden" />
+          </label>
+        </div>
       </div>
 
       <!-- Main Split View: Left Reader (7 cols) + Right AI Co-Pilot (5 cols on desktop, slide-up drawer on mobile!) -->
@@ -606,6 +619,9 @@
                   <button id="btnRegenerateTldr" class="tv-focusable text-[11px] px-2.5 py-1 rounded-lg theme-accent-soft font-semibold flex items-center gap-1">
                     <i class="fa-solid fa-rotate"></i> AI ile Derinleştir
                   </button>
+                  <button id="btnAiRewriteTldr" class="tv-focusable text-[11px] px-2.5 py-1 rounded-lg theme-accent-bg font-semibold flex items-center gap-1" title="4 maddeyi yapay zekayla Türkçe olarak yeniden yazar (kota harcar)">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> 4 Maddeyi AI ile Türkçe Yaz
+                  </button>
                 </div>
                 <div id="readerTldrGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"></div>
               </div>
@@ -621,7 +637,17 @@
                   <option value="Türkçe">🇹🇷 Türkçeye Çevir</option>
                   <option value="İngilizce">🇬🇧 İngilizceye Çevir</option>
                 </select>
-                <button id="btnTranslateFullArticle" class="px-2.5 py-1 rounded-lg theme-accent-soft font-semibold text-xs" title="API kotasını şişirmeden akıllı parçalı çeviri yapar">Tüm Metni Türkçeye Çevir</button>
+                <button id="btnTranslateFullArticle" class="px-2.5 py-1 rounded-lg theme-accent-soft font-semibold text-xs" title="Ücretsiz çeviri servisi kullanır, API kotası harcamaz">Tüm Metni Çevir (Ücretsiz)</button>
+                <button id="btnTranslateFullArticleAi" class="px-2.5 py-1 rounded-lg theme-bg-card border theme-border font-semibold text-xs hover:border-amber-500" title="Gemini/Groq anahtarlarınızla daha kaliteli çeviri (kota harcar)"><i class="fa-solid fa-wand-magic-sparkles theme-accent-text mr-1"></i>AI ile Çevir</button>
+                <button id="btnRestoreOriginalText" class="hidden px-2.5 py-1 rounded-lg theme-bg-card border theme-border font-semibold text-xs">↩ Orijinale Dön</button>
+              </div>
+            </div>
+            <div id="readerShortTextNotice" class="hidden not-italic font-sans text-xs rounded-xl border border-amber-500/50 theme-bg-card p-3 space-y-2">
+              <div class="font-bold theme-accent-text"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Bu makaleden çok az metin çekilebildi (yalnızca özet olabilir).</div>
+              <div class="theme-text-secondary">Tam metni orijinal PDF'ten çekmeyi deneyebilir, istersen yapay zekadan (kota harcar) tam metni bulup bölümlere ayırmasını isteyebilirsin.</div>
+              <div class="flex flex-wrap gap-1.5">
+                <button id="btnShortTextPdfFetch" class="px-2.5 py-1 rounded-lg theme-bg-secondary border theme-border font-semibold"><i class="fa-solid fa-file-pdf text-red-400 mr-1"></i>PDF'ten Tam Metni Çek (Ücretsiz)</button>
+                <button id="btnAiFullTextFetch" class="px-2.5 py-1 rounded-lg theme-accent-bg font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>AI ile Tam Metni Çek</button>
               </div>
             </div>
             <div id="readerArticleBody" class="space-y-4"></div>
@@ -768,6 +794,18 @@
             </div>
 
             <!-- Interactive PDF Canvas Stage (Swipe Left/Right to Turn Pages, Pinch/Double-Tap to Zoom!) -->
+            <div id="pdfFailPanel" class="hidden theme-bg-elevated border-2 border-amber-500/60 rounded-xl p-3 space-y-2 text-xs pop-in">
+              <div class="font-bold theme-accent-text"><i class="fa-solid fa-lock mr-1"></i>Bu makalenin PDF'i otomatik çekilemedi (yayıncı koruması / erişim kısıtı)</div>
+              <div class="flex flex-wrap gap-1.5">
+                <button id="btnPdfFailRunHunter" class="px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold hover:border-amber-500"><i class="fa-solid fa-radar theme-accent-text mr-1"></i>6 Kademeli Avcıyı Çalıştır</button>
+                <a id="linkPdfFailPublisher" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold hover:border-amber-500"><i class="fa-solid fa-arrow-up-right-from-square theme-accent-text mr-1"></i>Yayıncı Sayfasını Aç</a>
+                <label class="px-2.5 py-1.5 rounded-lg theme-accent-bg font-bold cursor-pointer"><i class="fa-solid fa-folder-open mr-1"></i>İndirdiğim PDF'i Yükle<input id="inputPdfFailFile" type="file" accept=".pdf" class="hidden" /></label>
+              </div>
+              <div class="flex gap-1.5">
+                <input id="inputPdfPasteUrl" type="text" placeholder="Bulduğunuz doğrudan PDF bağlantısını yapıştırın (https://...pdf)" class="flex-1 px-2.5 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border font-mono" />
+                <button id="btnPdfPasteUrlLoad" class="px-3 py-1.5 rounded-lg theme-bg-card border theme-border font-bold hover:border-amber-500">Bağlantıdan Çek</button>
+              </div>
+            </div>
             <div id="pdfCanvasViewport" class="relative w-full max-h-[80vh] overflow-auto rounded-xl border theme-border bg-slate-950/95 p-1.5 sm:p-4 select-none">
               <div id="pdfStageWrapper" class="relative mx-auto shadow-2xl transition-transform duration-150" style="width: fit-content;">
                 <canvas id="pdfRenderCanvas" class="block bg-white rounded shadow-lg"></canvas>
@@ -1735,9 +1773,9 @@
         return s.slice(0, half) + '\n...[KOTA KORUMA: ORTA KISIM ÖZETLENDİ]...\n' + s.slice(-half);
       }
 
-      async function callAiWithKeyRotation(systemPrompt, userPrompt, imageBase64 = null) {
+      async function callAiWithKeyRotation(systemPrompt, userPrompt, imageBase64 = null, opts = {}) {
         systemPrompt = enforceTokenBudget(systemPrompt, 3600);
-        userPrompt = enforceTokenBudget(userPrompt, 4800);
+        userPrompt = enforceTokenBudget(userPrompt, opts.maxUserChars || 4800);
         const pool = State.keyPool;
         const now = Date.now();
 
@@ -1771,11 +1809,13 @@
           orderedCandidates = [...rotateSlice(geminiKeys, pool.geminiIndex), ...rotateSlice(groqKeys, pool.groqIndex)];
         }
 
+        if (opts.geminiOnly) orderedCandidates = orderedCandidates.filter(k => k.provider === 'gemini');
+
         for (const keyObj of orderedCandidates) {
           try {
             if (keyObj.provider === 'gemini') {
               pool.geminiIndex = (pool.geminiIndex + 1) % Math.max(1, geminiKeys.length);
-              const text = await callGeminiApi(keyObj.key, systemPrompt, userPrompt, imageBase64);
+              const text = await callGeminiApi(keyObj.key, systemPrompt, userPrompt, imageBase64, opts.grounding === true);
               keyObj.uses += 1;
               keyObj.status = 'ready';
               keyObj.cooldownUntil = 0;
@@ -1810,7 +1850,7 @@
         return [...arr.slice(idx), ...arr.slice(0, idx)];
       }
 
-      async function callGeminiApi(apiKey, systemPrompt, userPrompt, imageBase64 = null) {
+      async function callGeminiApi(apiKey, systemPrompt, userPrompt, imageBase64 = null, grounding = false) {
         const cleanKey = apiKey.replace(/[^\x21-\x7E]/g, '').trim();
         const userParts = [{ text: userPrompt }];
         if (imageBase64) {
@@ -1825,25 +1865,31 @@
         // Try gemini-2.5-flash first, then gemini-2.0-flash if rate-limited on 2.5
         const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
         let lastErr = null;
+        // grounding=true: önce Google Arama destekli (web'e erişen) çağrı denenir, olmazsa normal çağrıya düşer
+        const variants = grounding ? [true, false] : [false];
         for (const m of models) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(cleanKey)}`;
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+          for (const useTools of variants) {
+            try {
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+              const bodyObj = {
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ role: 'user', parts: userParts }],
                 generationConfig: { temperature: 0.35 }
-              })
-            });
-            if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
-            const data = await res.json();
-            const out = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!out) throw new Error('Boş Gemini yanıtı');
-            return out;
-          } catch (e) {
-            lastErr = e;
+              };
+              if (useTools) bodyObj.tools = [{ google_search: {} }];
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyObj)
+              });
+              if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+              const data = await res.json();
+              const out = (data?.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('').trim();
+              if (!out) throw new Error('Boş Gemini yanıtı');
+              return out;
+            } catch (e) {
+              lastErr = e;
+            }
           }
         }
         throw lastErr || new Error('Gemini hata');
@@ -1952,8 +1998,126 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         return translatedParts.length > 0 ? translatedParts.join(' ') : rawQuery;
       }
 
+
+      // --- AI / ÜCRETSİZ YARDIMCILAR (kullanıcı butonla isteyince devreye girer) ---
+      function hasAiKeys() {
+        return (State.keyPool.keys || []).length > 0;
+      }
+      function aiFailed(res) {
+        return !res || !res.text || String(res.usedKey || '').startsWith('Yerleşik');
+      }
+      function requireAiKeysOrToast() {
+        if (!hasAiKeys()) {
+          showToast('Bu özellik için önce Ayarlar & Key sekmesinden Gemini/Groq anahtarı ekleyin.', 'error');
+          return false;
+        }
+        return true;
+      }
+      function escapeHtml(str) {
+        return String(str == null ? '' : str).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      }
+
+      // Metni cümle sınırlarından güvenli parçalara böler
+      function splitIntoChunks(text, maxLen) {
+        const out = [];
+        const paras = String(text || '').split(/\n+/);
+        for (const para of paras) {
+          if (!para.trim()) continue;
+          if (para.length <= maxLen) { out.push(para); continue; }
+          const sentences = para.split(/(?<=[.!?])\s+/);
+          let cur = '';
+          for (const sent of sentences) {
+            if ((cur + ' ' + sent).length > maxLen && cur) { out.push(cur); cur = sent; }
+            else cur = cur ? cur + ' ' + sent : sent;
+            while (cur.length > maxLen) { out.push(cur.slice(0, maxLen)); cur = cur.slice(maxLen); }
+          }
+          if (cur) out.push(cur);
+        }
+        return out;
+      }
+
+      // KOTA HARCAMAYAN ÇEVİRİ: önce Google gtx uç noktası, olmazsa MyMemory
+      async function freeTranslateChunk(text, target) {
+        const tl = target === 'en' ? 'en' : 'tr';
+        try {
+          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`;
+          const r = await fetch(url);
+          if (r.ok) {
+            const j = await r.json();
+            const out = (j?.[0] || []).map(x => x?.[0] || '').join('');
+            if (out && out.trim()) return out;
+          }
+        } catch (e) {}
+        try {
+          const email = encodeURIComponent(State.hunterConfig.email || '');
+          const mm = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 480))}&langpair=${tl === 'tr' ? 'en|tr' : 'tr|en'}${email ? '&de=' + email : ''}`;
+          const r2 = await fetch(mm);
+          if (r2.ok) {
+            const j2 = await r2.json();
+            const t = (j2?.responseData?.translatedText || '').trim();
+            if (t && !t.includes('MYMEMORY WARNING')) return t;
+          }
+        } catch (e) {}
+        return null;
+      }
+
+      async function freeTranslateText(text, target) {
+        const chunks = splitIntoChunks(text, 1400);
+        const outParts = [];
+        for (const c of chunks) {
+          const t = await freeTranslateChunk(c, target);
+          if (t == null) return null; // servis ulaşılamadı
+          outParts.push(t);
+        }
+        return outParts.join('\n\n');
+      }
+
+      // "Çok az metin" uyarı kutusu + orijinale dön butonu durumu
+      function updateReaderTextNotices() {
+        const p = State.activePaper;
+        const notice = document.getElementById('readerShortTextNotice');
+        const restoreBtn = document.getElementById('btnRestoreOriginalText');
+        if (!p) return;
+        const total = (p.fullTextSections || []).reduce((a, sec) => a + (sec.body || '').length, 0);
+        if (notice) notice.classList.toggle('hidden', !(total < 2600 && !p.fullTextLoaded));
+        if (restoreBtn) restoreBtn.classList.toggle('hidden', !(p.fullTextSections || []).some(sec => sec._origBody));
+      }
+
+      function renderReaderBodyOnly() {
+        const p = State.activePaper;
+        if (!p) return;
+        const bodyEl = document.getElementById('readerArticleBody');
+        const sections = p.fullTextSections || [{ heading: 'Özet', body: p.abstract }];
+        bodyEl.style.fontSize = `${State.readerFontSize}px`;
+        bodyEl.innerHTML = sections.map(sec => `
+          <section class="space-y-2">
+            <h2 class="text-lg sm:text-xl font-bold">${sec.heading}</h2>
+            <div class="leading-relaxed">${marked.parse(sec.body || '')}</div>
+          </section>
+        `).join('');
+        updateReaderTextNotices();
+      }
+
       // Zero-Quota Query Expander: Uses free public translation + academic dictionary so searching NEVER drains the user's Gemini/Groq API keys!
-      async function expandQueryWithAI(rawQuery) {
+      async function expandQueryWithAI(rawQuery, useAi = false) {
+        if (useAi && hasAiKeys()) {
+          try {
+            const res = await callAiWithKeyRotation(
+              'Sen bir akademik arama uzmanısın. Kullanıcının arama ifadesini (Türkçe veya İngilizce olabilir) analiz et ve SADECE geçerli bir JSON objesi döndür: {"en":"akademik veritabanlarında (OpenAlex, Semantic Scholar, EuropePMC) iyi sonuç verecek, anahtar kelimeleri ve eş anlamlıları içeren kısa İngilizce sorgu (en fazla 12 kelime)","tr":"aynı konunun kısa Türkçe sorgusu","news":"haber aramak için 2-4 kelimelik Türkçe sorgu"}',
+              rawQuery
+            );
+            if (!aiFailed(res)) {
+              const m = res.text.match(/\{[\s\S]*\}/);
+              if (m) {
+                const j = JSON.parse(m[0]);
+                if (j.en) {
+                  return { enQuery: String(j.en).trim(), trQuery: String(j.tr || rawQuery).trim(), newsQuery: String(j.news || rawQuery).trim(), usedAi: true };
+                }
+              }
+            }
+          } catch (e) {}
+          showToast('AI sorgu çevirisi yapılamadı, ücretsiz çeviriye geçildi.', 'info');
+        }
         try {
           const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(rawQuery) || Object.keys(TR_ACADEMIC_DICT).some(k => rawQuery.toLowerCase().includes(k));
           if (hasTurkishChars) {
@@ -1980,7 +2144,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         };
       }
 
-      async function executeFullSearch(queryText) {
+      async function executeFullSearch(queryText, opts = {}) {
         const q = (queryText || document.getElementById('searchInput').value || '').trim();
         if (!q) {
           showToast('Lütfen aranacak bir konu veya terim yazın.', 'info');
@@ -2002,14 +2166,14 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
 
         try {
           // Step 1: Translate/expand query to global academic English when searching globally
-          const expanded = await expandQueryWithAI(q);
+          const expanded = await expandQueryWithAI(q, opts.useAi === true);
           const effectiveAcademicQuery = State.langScope === 'tr' ? expanded.trQuery : expanded.enQuery;
 
           if (expBar && expText) {
             expBar.classList.remove('hidden');
             expText.textContent = State.langScope === 'tr'
-              ? `TR Akademik Sorgu: "${expanded.trQuery}"`
-              : `Global Akademik Sorgu: "${expanded.enQuery}" (Girilen: "${q}")`;
+              ? `${expanded.usedAi ? '🤖 AI ' : ''}TR Akademik Sorgu: "${expanded.trQuery}"`
+              : `${expanded.usedAi ? '🤖 AI ' : ''}Global Akademik Sorgu: "${expanded.enQuery}" (Girilen: "${q}")`;
           }
 
           // Step 2: Query multiple real academic databases in parallel
@@ -2893,6 +3057,9 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
                   <button data-toggle-bag="${paper.id}" class="tv-focusable px-3 py-1.5 rounded-xl text-xs font-semibold border ${inBag ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500' : 'theme-bg-card theme-border'}">
                     <i class="fa-solid fa-bookmark mr-1"></i>${inBag ? 'Çantada Kayıtlı' : 'Çantaya At'}
                   </button>
+                  <button data-ai-card="${paper.id}" class="tv-focusable px-3 py-1.5 rounded-xl text-xs font-semibold border theme-bg-card theme-border hover:border-amber-500" title="Bu makalenin başlığını ve özetini AI ile Türkçeleştirir (kota harcar)">
+                    <i class="fa-solid fa-wand-magic-sparkles theme-accent-text mr-1"></i>AI Türkçe Özet
+                  </button>
                 </div>
 
                 <button data-open-pdf-tab="${paper.id}" class="tv-focusable px-3 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500" title="Uygulama İçi PDF Görünümünde Aç">
@@ -2962,6 +3129,33 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             Storage.set('ma_compare_ids', State.compareIds);
             updateBadges();
             renderAcademicResults();
+          });
+        });
+
+        list.querySelectorAll('[data-ai-card]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const paper = State.papers.find(x => x.id === btn.getAttribute('data-ai-card'));
+            if (!paper || !requireAiKeysOrToast()) return;
+            btn.disabled = true;
+            showToast('AI bu makaleyi Türkçeleştiriyor...', 'info');
+            try {
+              const res = await callAiWithKeyRotation(
+                'Verilen makale başlığı ve özetini inceleyip SADECE geçerli bir JSON objesi döndür: {"trTitle":"Türkçe başlık","problem":"problem (1-2 cümle Türkçe)","findings":"bulgular (1-2 cümle Türkçe)"}. Özette olmayan bilgiyi uydurma.',
+                `Başlık: ${paper.title}\nÖzet: ${(paper.abstract || '').slice(0, 1800)}`
+              );
+              const m = !aiFailed(res) && res.text.match(/\{[\s\S]*\}/);
+              if (m) {
+                const j = JSON.parse(m[0]);
+                if (j.trTitle) paper.trTitle = j.trTitle;
+                paper.tldr = { ...(paper.tldr || {}), problem: j.problem || paper.tldr?.problem, findings: j.findings || paper.tldr?.findings };
+                renderAcademicResults();
+                showToast('Makale Türkçeleştirildi.', 'success');
+              } else {
+                showToast('AI yanıt veremedi (kota/anahtar).', 'error');
+              }
+            } catch (e) {
+              showToast('AI yanıtı okunamadı, tekrar deneyin.', 'error');
+            } finally { btn.disabled = false; }
           });
         });
 
@@ -3100,15 +3294,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         `;
 
         // Clean Reader Body
-        const bodyEl = document.getElementById('readerArticleBody');
-        const sections = p.fullTextSections || [{ heading: 'Özet', body: p.abstract }];
-        bodyEl.style.fontSize = `${State.readerFontSize}px`;
-        bodyEl.innerHTML = sections.map(sec => `
-          <section class="space-y-2">
-            <h2 class="text-lg sm:text-xl font-bold">${sec.heading}</h2>
-            <div class="leading-relaxed">${marked.parse(sec.body)}</div>
-          </section>
-        `).join('');
+        renderReaderBodyOnly();
 
         // Render Visuals (Chart, Mermaid, Table, Equations)
         renderReaderVisuals();
@@ -3990,20 +4176,50 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           renderAcademicResults();
         });
 
-        // Batch Translate Titles with AI
+        // Batch Translate Titles with AI (tek istekte toplu — kota dostu, yalnızca kullanıcı basınca çalışır)
         document.getElementById('btnBatchTranslate').addEventListener('click', async () => {
-          showToast('Makale başlıkları ve özetleri AI ile Türkçeye çevriliyor...', 'info');
-          for (const p of State.papers) {
-            if (!p.trTitle) {
-              const res = await callAiWithKeyRotation(
-                'Aşağıdaki akademik maden mühendisliği makale başlığını tam ve doğru teknik Türkçe ile çevir, sadece çeviriyi döndür.',
-                p.title
-              );
-              p.trTitle = res.text.replace(/^["'\s#]+|["'\s]+$/g, '').slice(0, 180);
-            }
+          if (!requireAiKeysOrToast()) return;
+          const todo = State.papers.filter(p => !p.trTitle && p.lang !== 'tr');
+          if (todo.length === 0) { showToast('Çevrilecek başlık kalmadı.', 'info'); return; }
+          showToast(`${todo.length} makale başlığı AI ile Türkçeye çevriliyor...`, 'info');
+          let done = 0;
+          for (let i = 0; i < todo.length; i += 10) {
+            const group = todo.slice(i, i + 10);
+            const list = group.map((p, idx) => `${idx + 1}. ${p.title}`).join('\n');
+            const res = await callAiWithKeyRotation(
+              'Aşağıdaki numaralı akademik makale başlıklarını doğru teknik Türkçeye çevir. Her satırda sadece "numara. çeviri" formatında yanıt ver, başka hiçbir şey yazma.',
+              list
+            );
+            if (aiFailed(res)) { showToast('AI yanıt veremedi (kota/anahtar). Ücretsiz çeviri butonunu deneyebilirsiniz.', 'error'); break; }
+            const lines = res.text.split(/\r?\n/).filter(l => /^\s*\d+[\.\)]/.test(l));
+            group.forEach((p, idx) => {
+              const line = lines.find(l => l.trim().startsWith(`${idx + 1}.`) || l.trim().startsWith(`${idx + 1})`));
+              if (line) { p.trTitle = line.replace(/^\s*\d+[\.\)\-]\s*/, '').trim(); done++; }
+            });
           }
           renderAcademicResults();
-          showToast('Tüm başlıklar Türkçeleştirildi!', 'success');
+          if (done > 0) showToast(`${done} başlık Türkçeleştirildi!`, 'success');
+        });
+
+        // Ücretsiz başlık çevirisi (API kotası harcamaz)
+        document.getElementById('btnBatchTranslateFree').addEventListener('click', async () => {
+          const todo = State.papers.filter(p => !p.trTitle && p.lang !== 'tr');
+          if (todo.length === 0) { showToast('Çevrilecek başlık kalmadı.', 'info'); return; }
+          showToast(`${todo.length} başlık ücretsiz servisle çevriliyor...`, 'info');
+          let done = 0;
+          for (let i = 0; i < todo.length; i += 4) {
+            const group = todo.slice(i, i + 4);
+            const results = await Promise.all(group.map(p => freeTranslateChunk(p.title, 'tr')));
+            group.forEach((p, idx) => { if (results[idx]) { p.trTitle = results[idx].trim(); done++; } });
+          }
+          renderAcademicResults();
+          showToast(done > 0 ? `${done} başlık ücretsiz olarak Türkçeleştirildi!` : 'Ücretsiz çeviri servisine ulaşılamadı. AI ile çevir butonunu deneyebilirsiniz.', done > 0 ? 'success' : 'error');
+        });
+
+        // AI ile arama (sorguyu yapay zekaya genişlettir)
+        document.getElementById('btnExecuteSearchAi').addEventListener('click', () => {
+          if (!requireAiKeysOrToast()) return;
+          executeFullSearch(undefined, { useAi: true });
         });
 
         // Summarize Sector News
@@ -4376,12 +4592,14 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             targetUrl,
             `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
             `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
-            `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+            `https://thingproxy.freeboard.io/fetch/${targetUrl}`,
+            `https://yacdn.org/proxy/${targetUrl}`
           ];
 
           const fetchAttempt = async (url) => {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 5500);
+            const timer = setTimeout(() => controller.abort(), 12000);
             try {
               const res = await fetch(url, { signal: controller.signal });
               clearTimeout(timer);
@@ -4411,7 +4629,8 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           if (!pageUrl || !pageUrl.startsWith('http')) return null;
           const proxies = [
             `https://api.allorigins.win/get?url=${encodeURIComponent(pageUrl)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(pageUrl)}`
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(pageUrl)}`,
+            `https://corsproxy.io/?url=${encodeURIComponent(pageUrl)}`
           ];
           for (const pUrl of proxies) {
             try {
@@ -4490,6 +4709,20 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
               }
             } catch (e) {}
 
+            // Europe PMC / PMC kopyası
+            try {
+              let pmcid = paper.pmcid;
+              if (!pmcid) {
+                const er = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:${encodeURIComponent(cleanDoi)}&format=json`);
+                if (er.ok) pmcid = (await er.json())?.resultList?.result?.[0]?.pmcid || '';
+              }
+              if (pmcid) {
+                paper.pmcid = pmcid;
+                discoveredUrls.push(`https://europepmc.org/backend/ptpmcrender.fcgi?accid=${pmcid}&blobtype=pdf`);
+                discoveredUrls.push(`https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/pdf/`);
+              }
+            } catch (e) {}
+
             const uniqueUrls = [...new Set(discoveredUrls.filter(Boolean))];
             for (const u of uniqueUrls) {
               const ab = await tryFetchPdfArrayBuffer(u);
@@ -4498,6 +4731,23 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
                 return ab;
               }
             }
+          }
+
+          // Step 2b: DOI yoksa başlıkla OpenAlex'ten açık erişim konumu ara
+          if (!validDoi && paper?.title && paper.title.length > 15) {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Başlıkla açık erişim PDF kopyası aranıyor...`);
+            try {
+              const r = await fetch(`https://api.openalex.org/works?filter=title.search:${encodeURIComponent(paper.title.slice(0, 120))}&per-page=3`);
+              if (r.ok) {
+                const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '').slice(0, 40);
+                const hit = ((await r.json()).results || []).find(w => norm(w.title) === norm(paper.title));
+                const u = hit?.best_oa_location?.pdf_url || hit?.open_access?.oa_url;
+                if (u) {
+                  const ab = await tryFetchPdfArrayBuffer(u);
+                  if (ab) { paper.pdfDirectUrl = u; return ab; }
+                }
+              }
+            } catch (e) {}
           }
 
           // Step 3: Scrape <meta name="citation_pdf_url"> from the publisher / DergiPark / MDPI / university repository HTML landing page!
@@ -4547,6 +4797,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           pv.pageNum = 1;
           pv.rect = null;
           document.getElementById('pdfSnipActionBar')?.classList.add('hidden');
+          document.getElementById('pdfFailPanel')?.classList.add('hidden');
           setPdfViewMode('single');
 
           const statusMsg = document.getElementById('pdfViewerStatusMsg');
@@ -4601,14 +4852,17 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           document.getElementById('spanPdfTotalPages').textContent = '1';
           document.getElementById('inputPdfPageNum').value = 1;
           if (statusMsg) {
-            statusMsg.innerHTML = `<i class="fa-solid fa-lock text-amber-400 mr-1"></i>Yayıncı PDF Koruması (Paywall / CORS) • Sağ üstten "PDF Seç" ile indirdiğiniz PDF'i açabilirsiniz.`;
+            statusMsg.innerHTML = `<i class="fa-solid fa-lock text-amber-400 mr-1"></i>Yayıncı PDF Koruması (Paywall / CORS) • Aşağıdaki seçeneklerle PDF'i elle bağlayabilirsiniz.`;
           }
+          document.getElementById('pdfFailPanel')?.classList.remove('hidden');
+          const pubLink = document.getElementById('linkPdfFailPublisher');
+          if (pubLink) pubLink.href = getReliableSourceUrl(paper);
           await renderCurrentPdfPage();
         }
 
         async function extractAllPdfPagesIntoCleanReader(pdfDoc, paper) {
           try {
-            const maxP = Math.min(pdfDoc.numPages, 20);
+            const maxP = Math.min(pdfDoc.numPages, 60);
             const secs = [];
             for (let p = 1; p <= maxP; p++) {
               const page = await pdfDoc.getPage(p);
@@ -4624,15 +4878,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             if (secs.length > 0) {
               paper.fullTextSections = secs;
               paper.fullTextLoaded = true;
-              const bodyEl = document.getElementById('readerArticleBody');
-              if (bodyEl) {
-                bodyEl.innerHTML = secs.map(sec => `
-                  <section class="space-y-2">
-                    <h2 class="text-lg sm:text-xl font-bold">${sec.heading}</h2>
-                    <div class="leading-relaxed">${marked.parse(sec.body)}</div>
-                  </section>
-                `).join('');
-              }
+              renderReaderBodyOnly();
             }
           } catch (e) {}
         }
@@ -5370,28 +5616,202 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
           });
         });
 
-        // Quota-Safe Chunked Translation Button (Translates active section/page or in safe chunks without blowing up API keys!)
-        document.getElementById('btnTranslateFullArticle').addEventListener('click', async () => {
+        // --- Metin çevirisi: ücretsiz (varsayılan) + AI (isteğe bağlı) ---
+        async function translateActivePaperText(mode) {
           const p = State.activePaper;
           if (!p) return;
-          const targetLang = document.getElementById('selectTranslateTargetLang')?.value || 'Türkçe';
-          const secs = p.fullTextSections || [{ heading: 'Özet', body: p.abstract || '' }];
-
-          showToast(`API kotasını koruyarak bölüm bölüm ${targetLang} diline çevriliyor (1/${secs.length})...`, 'info');
-
-          // Translate up to 3 sections at a time with rotation across keys so no single key hits TPM limit
-          const maxBatch = Math.min(secs.length, 4);
-          for (let i = 0; i < maxBatch; i++) {
-            const chunkText = secs[i].body.slice(0, 3200);
-            const res = await callAiWithKeyRotation(
-              `Verilen akademik metin bölümünü teknik terimleri koruyarak akıcı bir akademik ${targetLang} diline çevir. Sadece çeviriyi döndür.`,
-              chunkText
-            );
-            secs[i].heading = `${secs[i].heading} (${targetLang})`;
-            secs[i].body = res.text;
-            renderReaderContent();
+          const targetName = document.getElementById('selectTranslateTargetLang')?.value || 'Türkçe';
+          const target = targetName === 'İngilizce' ? 'en' : 'tr';
+          if (mode === 'ai' && !requireAiKeysOrToast()) return;
+          if (!p.fullTextSections || p.fullTextSections.length === 0) {
+            p.fullTextSections = [{ heading: 'Özet', body: p.abstract || '' }];
           }
-          showToast(`Metin kota dostu modda ${targetLang} diline çevrildi!`, 'success');
+          const secs = p.fullTextSections;
+          const badge = document.getElementById('readerCascadeBadge');
+          const btnFree = document.getElementById('btnTranslateFullArticle');
+          const btnAi = document.getElementById('btnTranslateFullArticleAi');
+          btnFree.disabled = true; btnAi.disabled = true;
+          const pending = secs.filter(sec => sec._translatedTo !== target);
+          if (pending.length === 0) { showToast('Metin zaten bu dile çevrilmiş. Orijinale dönüp tekrar deneyebilirsiniz.', 'info'); btnFree.disabled = false; btnAi.disabled = false; return; }
+          const limit = mode === 'ai' ? 4 : pending.length;
+          let doneCount = 0;
+          try {
+            for (const sec of pending.slice(0, limit)) {
+              if (badge) badge.textContent = `Çevriliyor ${doneCount + 1}/${Math.min(limit, pending.length)}...`;
+              if (sec._origBody == null) { sec._origBody = sec.body; sec._origHeading = sec.heading; }
+              let translated = null;
+              if (mode === 'free') {
+                translated = await freeTranslateText(sec._origBody, target);
+                if (translated != null) {
+                  const h = await freeTranslateChunk(sec._origHeading, target);
+                  if (h) sec.heading = h;
+                }
+              } else {
+                const chunks = splitIntoChunks(sec._origBody, 3000).slice(0, 3);
+                const parts = [];
+                for (const c of chunks) {
+                  const res = await callAiWithKeyRotation(
+                    `Verilen akademik metin bölümünü teknik terimleri koruyarak akıcı bir akademik ${targetName} diline çevir. Sadece çeviriyi döndür.`,
+                    c
+                  );
+                  if (aiFailed(res)) { parts.length = 0; break; }
+                  parts.push(res.text);
+                }
+                if (parts.length > 0) { translated = parts.join('\n\n'); sec.heading = `${sec._origHeading} (${targetName})`; }
+              }
+              if (translated == null) {
+                showToast(mode === 'free' ? 'Ücretsiz çeviri servisine ulaşılamadı. "AI ile Çevir" butonunu deneyebilirsiniz.' : 'AI çeviri yapamadı (kota/anahtar). Ücretsiz çeviriyi deneyin.', 'error');
+                break;
+              }
+              sec.body = translated;
+              sec._translatedTo = target;
+              doneCount++;
+              renderReaderBodyOnly();
+            }
+          } finally {
+            btnFree.disabled = false; btnAi.disabled = false;
+            if (badge) badge.textContent = doneCount > 0 ? `Çeviri: ${doneCount} bölüm` : 'Hazır';
+          }
+          const remaining = pending.length - doneCount;
+          if (doneCount > 0) showToast(remaining > 0 && mode === 'ai' ? `${doneCount} bölüm çevrildi. Kalan ${remaining} bölüm için tekrar basın (kota koruması).` : `Metin ${targetName} diline çevrildi!`, 'success');
+          updateReaderTextNotices();
+        }
+
+        document.getElementById('btnTranslateFullArticle').addEventListener('click', () => translateActivePaperText('free'));
+        document.getElementById('btnTranslateFullArticleAi').addEventListener('click', () => translateActivePaperText('ai'));
+        document.getElementById('btnRestoreOriginalText').addEventListener('click', () => {
+          const p = State.activePaper;
+          if (!p) return;
+          for (const sec of (p.fullTextSections || [])) {
+            if (sec._origBody != null) {
+              sec.body = sec._origBody;
+              sec.heading = sec._origHeading || sec.heading;
+              delete sec._origBody; delete sec._origHeading; delete sec._translatedTo;
+            }
+          }
+          renderReaderBodyOnly();
+          showToast('Orijinal metne dönüldü.', 'info');
+        });
+
+        // --- Tam metin: önce orijinal PDF (ücretsiz), olmazsa AI (Gemini + web araması) ---
+        async function fetchFullTextFromPdfForActivePaper() {
+          const p = State.activePaper;
+          if (!p || !window.pdfjsLib) return false;
+          showToast('Orijinal PDF aranıyor ve tam metin çıkarılıyor...', 'info');
+          const buf = await discoverAndFetchRealPdfBuffer(p);
+          if (!buf) return false;
+          try {
+            const doc = await window.pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+            p.uploadedArrayBuffer = buf.slice(0);
+            await extractAllPdfPagesIntoCleanReader(doc, p);
+            updateReaderTextNotices();
+            return Boolean(p.fullTextLoaded);
+          } catch (e) { return false; }
+        }
+
+        document.getElementById('btnShortTextPdfFetch').addEventListener('click', async () => {
+          const ok = await fetchFullTextFromPdfForActivePaper();
+          showToast(ok ? 'PDF\'ten tam metin başarıyla çekildi!' : 'PDF otomatik çekilemedi. "Canlı PDF" sekmesindeki seçeneklerle elle yükleyebilir veya AI ile deneyebilirsiniz.', ok ? 'success' : 'error');
+        });
+
+        document.getElementById('btnAiFullTextFetch').addEventListener('click', async () => {
+          const p = State.activePaper;
+          if (!p) return;
+          if (!requireAiKeysOrToast()) return;
+          const btn = document.getElementById('btnAiFullTextFetch');
+          btn.disabled = true;
+          try {
+            if (await fetchFullTextFromPdfForActivePaper()) {
+              showToast('Orijinal PDF bulundu; tam metin kota harcanmadan çekildi!', 'success');
+              return;
+            }
+            showToast('PDF alınamadı. Yapay zeka (Gemini + Google Arama) tam metni arıyor...', 'info');
+            const sys = 'Sen akademik makale okuyucususun. Google Arama erişimini kullanarak verilen makalenin açık erişimli tam metnini bul ve aslına sadık biçimde Markdown olarak aktar. Her bölüm "## Bölüm Başlığı" ile başlasın (Özet, Giriş, Yöntem, Bulgular, Tartışma, Sonuç vb.). Metni özetleme; bulabildiğin kadar tam cümlelerle ver. Erişemediğin veya emin olmadığın bölümleri UYDURMA; o bölüme yalnızca "[Bu bölüme erişilemedi]" yaz. Son satıra "KAYNAK: <baktığın bağlantı>" ekle. Yanıtı makalenin orijinal dilinde ver.';
+            const user = `Başlık: ${p.title}\nYazarlar: ${p.authors}\nYıl: ${p.year}\nDergi: ${p.journal}\nDOI: ${p.doi}\nKaynak bağlantı: ${getReliableSourceUrl(p)}\nÖzet: ${(p.abstract || '').slice(0, 800)}`;
+            const res = await callAiWithKeyRotation(sys, user, null, { grounding: true, geminiOnly: true });
+            if (aiFailed(res)) {
+              showToast('AI tam metni getiremedi. Bu özellik için Ayarlar\'da en az bir Gemini anahtarı gerekir (web araması kullanır).', 'error');
+              return;
+            }
+            const parts = res.text.split(/^##\s+/m).map(x => x.trim()).filter(Boolean);
+            const newSecs = [];
+            parts.forEach((blk, i) => {
+              const nl = blk.indexOf('\n');
+              const heading = (nl > -1 ? blk.slice(0, nl) : blk).trim();
+              const body = (nl > -1 ? blk.slice(nl + 1) : '').trim();
+              if (body.length > 20) newSecs.push({ heading: `${newSecs.length + 1}. ${heading}`, body });
+            });
+            if (newSecs.length === 0) newSecs.push({ heading: '1. AI ile Çekilen Metin', body: res.text });
+            const note = { heading: 'ℹ️ Kaynak Notu', body: '**Bu metin yapay zeka (Gemini + Google Arama) tarafından web\'den derlenmiştir.** Alıntı yapmadan veya resmî bir raporda kullanmadan önce orijinal yayınla karşılaştırarak doğrulayın.' };
+            p.fullTextSections = [note, ...newSecs];
+            p.fullTextLoaded = true;
+            p.aiCompiledText = true;
+            renderReaderBodyOnly();
+            const badge = document.getElementById('readerCascadeBadge');
+            if (badge) badge.textContent = `AI ile çekildi (${newSecs.length} bölüm)`;
+            showToast(`AI ${newSecs.length} bölümlük metin derledi. Lütfen orijinaliyle doğrulayın.`, 'success');
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+        // AI ile 4 maddeyi Türkçe yeniden yaz
+        document.getElementById('btnAiRewriteTldr').addEventListener('click', async () => {
+          const p = State.activePaper;
+          if (!p || !requireAiKeysOrToast()) return;
+          const btn = document.getElementById('btnAiRewriteTldr');
+          btn.disabled = true;
+          showToast('AI makaleyi 4 maddede özetliyor...', 'info');
+          try {
+            const ctx = selectRelevantContextForQuestion(p, 'problem yöntem bulgular uygulama');
+            const res = await callAiWithKeyRotation(
+              'Makaleyi inceleyip SADECE geçerli bir JSON objesi döndür: {"problem":"temel problem (2-3 cümle, Türkçe)","method":"yöntem, veri ve analizler (Türkçe)","findings":"sayısal ve bilimsel bulgular (Türkçe)","fieldUse":"sahada/uygulamada ne işe yarar (Türkçe)"}. Makalede olmayan bilgiyi uydurma.',
+              `Başlık: ${p.title}\n${ctx}`
+            );
+            const m = !aiFailed(res) && res.text.match(/\{[\s\S]*\}/);
+            if (m) {
+              const j = JSON.parse(m[0]);
+              p.tldr = { problem: j.problem || p.tldr?.problem, method: j.method || p.tldr?.method, findings: j.findings || p.tldr?.findings, fieldUse: j.fieldUse || p.tldr?.fieldUse };
+              renderReaderContent();
+              showToast('4 maddelik özet AI ile yeniden yazıldı.', 'success');
+            } else {
+              showToast('AI özeti oluşturamadı (kota/anahtar).', 'error');
+            }
+          } catch (e) {
+            showToast('AI özeti okunamadı, tekrar deneyin.', 'error');
+          } finally { btn.disabled = false; }
+        });
+
+        // --- PDF çekilemediğinde elle yükleme / bağlantı yapıştırma ---
+        async function attachPdfBufferToActivePaper(buffer, label) {
+          const p = State.activePaper;
+          if (!p) return;
+          const head = String.fromCharCode(...new Uint8Array(buffer.slice(0, 10)));
+          if (!head.includes('%PDF')) { showToast('Seçilen dosya geçerli bir PDF değil.', 'error'); return; }
+          p.uploadedArrayBuffer = buffer.slice(0);
+          document.getElementById('pdfFailPanel')?.classList.add('hidden');
+          document.querySelector('[data-reader-tab="pdfframe"]')?.click();
+          showToast(`${label || 'PDF'} bu makaleye bağlandı ve tüm sayfalarıyla açılıyor.`, 'success');
+        }
+        async function handlePdfFileInputForActivePaper(e) {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (!f) return;
+          attachPdfBufferToActivePaper(await f.arrayBuffer(), `"${f.name}"`);
+        }
+        document.getElementById('inputHunterPdfFile').addEventListener('change', handlePdfFileInputForActivePaper);
+        document.getElementById('inputPdfFailFile').addEventListener('change', handlePdfFileInputForActivePaper);
+        document.getElementById('btnPdfFailRunHunter').addEventListener('click', () => {
+          if (State.activePaper) runSixStageFullTextHunter(State.activePaper);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        document.getElementById('btnPdfPasteUrlLoad').addEventListener('click', async () => {
+          const url = document.getElementById('inputPdfPasteUrl').value.trim();
+          if (!/^https?:\/\//i.test(url)) { showToast('Geçerli bir https:// PDF bağlantısı yapıştırın.', 'error'); return; }
+          showToast('Bağlantıdan PDF çekiliyor...', 'info');
+          const ab = await tryFetchPdfArrayBuffer(url);
+          if (ab) attachPdfBufferToActivePaper(ab, 'Bağlantıdaki PDF');
+          else showToast('Bu bağlantıdan PDF alınamadı (koruma/CORS). Dosyayı indirip "İndirdiğim PDF\'i Yükle" ile ekleyin.', 'error');
         });
 
         // Regenerate TL;DR with AI
@@ -5597,7 +6017,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=6.8').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=6.9').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
