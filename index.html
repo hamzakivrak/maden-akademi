@@ -1739,7 +1739,7 @@
               const masked = k.key.slice(0, 6) + '••••' + k.key.slice(-4);
               const badgeColor = k.provider === 'gemini' ? 'bg-blue-500/20 text-blue-300' : 'bg-orange-500/20 text-orange-300';
               const isReady = k.status === 'ready';
-              const statusColor = isReady ? 'text-emerald-400' : 'text-amber-400';
+              const statusColor = isReady ? 'text-emerald-400' : (k.status === 'invalid' ? 'text-red-400' : 'text-amber-400');
               const secsLeft = k.cooldownUntil > now ? Math.ceil((k.cooldownUntil - now) / 1000) : 0;
               return `
                 <div data-reset-key-idx="${idx}" class="px-3 py-2 rounded-xl theme-bg-card border theme-border flex items-center justify-between gap-2 text-xs cursor-pointer hover:border-amber-500/50" title="Tıklayarak bu anahtarı anında Hazır durumuna getirebilirsiniz">
@@ -1749,7 +1749,7 @@
                   </div>
                   <div class="flex items-center gap-2.5 flex-shrink-0 whitespace-nowrap">
                     <span class="theme-text-secondary text-[11px]">Sorgu: <strong>${k.uses}</strong></span>
-                    <span class="${statusColor} font-semibold text-[11px]">● ${isReady ? 'Hazır' : `Dinleniyor (${secsLeft}sn)`}</span>
+                    <span class="${statusColor} font-semibold text-[11px]">● ${isReady ? 'Hazır' : `${k.reason || 'Dinleniyor'} (${secsLeft >= 120 ? Math.ceil(secsLeft / 60) + ' dk' : secsLeft + ' sn'})`}</span>
                   </div>
                 </div>
               `;
@@ -1780,28 +1780,79 @@
         return s.slice(0, half) + '\n...[KOTA KORUMA: ORTA KISIM ÖZETLENDİ]...\n' + s.slice(-half);
       }
 
+      // --- AKILLI DİNLENME (COOLDOWN) POLİTİKASI ---
+      async function buildApiError(provider, res) {
+        let body = '';
+        try { body = await res.text(); } catch (e) {}
+        const err = new Error(`${provider} HTTP ${res.status}`);
+        err.status = res.status;
+        err.body = body.slice(0, 600);
+        let ra = parseFloat(res.headers.get('retry-after'));
+        if (!isFinite(ra)) {
+          let m;
+          if ((m = body.match(/"retryDelay":\s*"([\d.]+)s"/))) ra = parseFloat(m[1]);
+          else if ((m = body.match(/try again in (?:(\d+)m)?\s*([\d.]+)s/i))) ra = (parseInt(m[1] || '0', 10) * 60) + parseFloat(m[2]);
+          else if ((m = body.match(/try again in ([\d.]+)\s*ms/i))) ra = parseFloat(m[1]) / 1000;
+        }
+        err.retryAfterSec = isFinite(ra) ? ra : null;
+        err.daily = /PerDay|per day|\bRPD\b|\bTPD\b/i.test(body);
+        err.invalidKey = /API_KEY_INVALID|API key not valid|invalid_api_key|Invalid API Key/i.test(body) || res.status === 401 || res.status === 403;
+        return err;
+      }
+
+      function cooldownForError(err) {
+        const st = err && err.status;
+        if (err && err.invalidKey) return { ms: 6 * 3600 * 1000, invalid: true, reason: 'Geçersiz/yetkisiz anahtar?' };
+        if (st === 429) {
+          if (err.daily) return { ms: 30 * 60 * 1000, reason: 'Günlük kota doldu' };
+          const sec = err.retryAfterSec != null ? err.retryAfterSec + 2 : 62;
+          return { ms: Math.min(Math.max(sec, 15), 120) * 1000, reason: 'Dakikalık limit' };
+        }
+        if (st >= 500) return { ms: 15000, reason: 'Sunucu yoğun' };
+        if (st >= 400) return { ms: 6000, reason: 'İstek reddedildi' };
+        return { ms: 8000, reason: 'Bağlantı hatası' };
+      }
+
+      // Aynı anahtarın iki modelinden gelen hatalardan en hafifini (en kısa dinlenme) seç
+      function milderError(a, b) {
+        if (!a) return b;
+        if (!b) return a;
+        return cooldownForError(b).ms < cooldownForError(a).ms ? b : a;
+      }
+
       async function callAiWithKeyRotation(systemPrompt, userPrompt, imageBase64 = null, opts = {}) {
         systemPrompt = enforceTokenBudget(systemPrompt, 3600);
         userPrompt = enforceTokenBudget(userPrompt, opts.maxUserChars || 4800);
         const pool = State.keyPool;
         const now = Date.now();
 
-        // First auto-recover any key whose 25-second cooldown has passed
-        for (const k of (pool.keys || [])) {
-          if (k.status !== 'ready' && (!k.cooldownUntil || k.cooldownUntil <= now)) {
-            k.status = 'ready';
-            k.cooldownUntil = 0;
+        // Süresi dolan dinlenmeleri otomatik Hazır yap
+        const recoverKeys = () => {
+          const t = Date.now();
+          for (const k of (pool.keys || [])) {
+            if (k.status !== 'ready' && (!k.cooldownUntil || k.cooldownUntil <= t)) {
+              k.status = 'ready';
+              k.cooldownUntil = 0;
+            }
           }
-        }
+        };
+        recoverKeys();
 
         let availableKeys = (pool.keys || []).filter(k => k.status === 'ready');
-        // If all keys were marked cooldown, reset them all so the user is never blocked!
+        // Hepsi dinleniyorsa: kısa sürede biten varsa bekle, yoksa kullanıcıya nedenini söyle (kotayı boşuna dövme)
         if (availableKeys.length === 0 && (pool.keys || []).length > 0) {
-          for (const k of pool.keys) {
-            k.status = 'ready';
-            k.cooldownUntil = 0;
+          const waiting = pool.keys.filter(k => k.status !== 'invalid' && k.cooldownUntil > Date.now());
+          const soonest = waiting.length ? Math.min(...waiting.map(k => k.cooldownUntil)) : 0;
+          const waitMs = soonest ? soonest - Date.now() : 0;
+          if (waitMs > 0 && waitMs <= 20000) {
+            showToast(`Anahtarlar dinleniyor, ${Math.ceil(waitMs / 1000)} sn içinde otomatik denenecek...`, 'info');
+            await new Promise(r => setTimeout(r, waitMs + 300));
+            recoverKeys();
+            availableKeys = pool.keys.filter(k => k.status === 'ready');
+          } else {
+            const reasons = [...new Set(pool.keys.map(k => k.reason).filter(Boolean))].join(', ') || 'dinleniyor';
+            showToast(`Tüm AI anahtarları şu an kullanılamıyor (${reasons}). ${waitMs > 0 ? 'En yakın hazır olma: ' + (waitMs >= 120000 ? Math.ceil(waitMs / 60000) + ' dk' : Math.ceil(waitMs / 1000) + ' sn') + '.' : 'Ayarlar & Key sekmesinden kontrol edin.'}`, 'error');
           }
-          availableKeys = [...pool.keys];
         }
 
         const geminiKeys = availableKeys.filter(k => k.provider === 'gemini');
@@ -1826,6 +1877,7 @@
               keyObj.uses += 1;
               keyObj.status = 'ready';
               keyObj.cooldownUntil = 0;
+              keyObj.reason = '';
               Storage.set('ma_key_pool', pool);
               updateKeyPoolUI();
               return { text, usedKey: `Gemini (${keyObj.key.slice(0, 7)}...)` };
@@ -1835,14 +1887,18 @@
               keyObj.uses += 1;
               keyObj.status = 'ready';
               keyObj.cooldownUntil = 0;
+              keyObj.reason = '';
               Storage.set('ma_key_pool', pool);
               updateKeyPoolUI();
               return { text, usedKey: `Groq/Llama (${keyObj.key.slice(0, 7)}...)` };
             }
           } catch (err) {
-            keyObj.status = 'cooldown';
-            keyObj.cooldownUntil = Date.now() + 25000; // 25s brief cooldown, auto-recovers!
+            const cd = cooldownForError(err);
+            keyObj.status = cd.invalid ? 'invalid' : 'cooldown';
+            keyObj.cooldownUntil = Date.now() + cd.ms;
+            keyObj.reason = cd.reason;
             keyObj.lastError = err.message;
+            Storage.set('ma_key_pool', pool);
             updateKeyPoolUI();
           }
         }
@@ -1889,13 +1945,13 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bodyObj)
               });
-              if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+              if (!res.ok) throw await buildApiError('Gemini', res);
               const data = await res.json();
               const out = (data?.candidates?.[0]?.content?.parts || []).map(x => x.text || '').join('').trim();
               if (!out) throw new Error('Boş Gemini yanıtı');
               return out;
             } catch (e) {
-              lastErr = e;
+              lastErr = milderError(lastErr, e);
             }
           }
         }
@@ -1923,13 +1979,13 @@
                 ]
               })
             });
-            if (!res.ok) throw new Error('Groq HTTP ' + res.status);
+            if (!res.ok) throw await buildApiError('Groq', res);
             const data = await res.json();
             const out = data?.choices?.[0]?.message?.content;
             if (!out) throw new Error('Boş Groq yanıtı');
             return out;
           } catch (e) {
-            lastErr = e;
+            lastErr = milderError(lastErr, e);
           }
         }
         throw lastErr || new Error('Groq hata');
