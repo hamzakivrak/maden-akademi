@@ -800,7 +800,9 @@
                 <button id="btnPdfFailRunHunter" class="px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold hover:border-amber-500"><i class="fa-solid fa-radar theme-accent-text mr-1"></i>6 Kademeli Avcıyı Çalıştır</button>
                 <a id="linkPdfFailPublisher" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold hover:border-amber-500"><i class="fa-solid fa-arrow-up-right-from-square theme-accent-text mr-1"></i>Yayıncı Sayfasını Aç</a>
                 <label class="px-2.5 py-1.5 rounded-lg theme-accent-bg font-bold cursor-pointer"><i class="fa-solid fa-folder-open mr-1"></i>İndirdiğim PDF'i Yükle<input id="inputPdfFailFile" type="file" accept=".pdf" class="hidden" /></label>
+                <button id="btnPrintTextAsPdf" class="px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold hover:border-emerald-500" title="Okuma ekranındaki tam metni PDF olarak kaydetmek için yazdırma penceresini açar"><i class="fa-solid fa-print text-emerald-400 mr-1"></i>Tam Metni PDF Olarak Kaydet</button>
               </div>
+              <details class="theme-text-secondary"><summary class="cursor-pointer font-semibold">Hangi kaynaklar denendi? (teknik kayıt)</summary><div id="pdfFailLog" class="font-mono text-[11px] mt-1 max-h-28 overflow-y-auto space-y-0.5"></div></details>
               <div class="flex gap-1.5">
                 <input id="inputPdfPasteUrl" type="text" placeholder="Bulduğunuz doğrudan PDF bağlantısını yapıştırın (https://...pdf)" class="flex-1 px-2.5 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border font-mono" />
                 <button id="btnPdfPasteUrlLoad" class="px-3 py-1.5 rounded-lg theme-bg-card border theme-border font-bold hover:border-amber-500">Bağlantıdan Çek</button>
@@ -1076,6 +1078,11 @@
               <div>
                 <label class="block font-semibold mb-1">6. Kademe Özel DOI Çözücü / Kurumsal Proxy Adresi (İsteğe Bağlı):</label>
                 <input id="inputCustomDoiMirror" type="text" placeholder="Örn: https://doi.org/ veya kurumsal kütüphane proxy adresiniz" class="tv-focusable w-full px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border font-mono" />
+              </div>
+              <div>
+                <label class="block font-semibold mb-1">Özel CORS Proxy (Cloudflare Worker) adresi — PDF çekmeyi güçlendirir (İsteğe Bağlı):</label>
+                <input id="inputCustomCorsProxy" type="text" placeholder="https://benim-proxy.kullanici.workers.dev/" class="tv-focusable w-full px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border font-mono" />
+                <p class="text-[11px] theme-text-secondary mt-1">Boş bırakırsanız herkese açık ücretsiz vekil sunucular denenir (yayıncılar çoğunu engeller). Kendi Worker'ınızı kurmak için rehber sohbette verildi.</p>
               </div>
               <button id="btnSaveHunterSettings" class="tv-focusable w-full px-3 py-2 rounded-xl theme-bg-card border theme-border font-bold hover:border-amber-500">
                 Tam Metin Avcısı Ayarlarını Kaydet
@@ -3817,6 +3824,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         if (State.gist.gistId) document.getElementById('inputGistId').value = State.gist.gistId;
         if (State.hunterConfig.email) document.getElementById('inputUnpaywallEmail').value = State.hunterConfig.email;
         if (State.hunterConfig.customMirror) document.getElementById('inputCustomDoiMirror').value = State.hunterConfig.customMirror;
+        if (State.hunterConfig.corsProxy) document.getElementById('inputCustomCorsProxy').value = State.hunterConfig.corsProxy;
 
         // Force OTA Cache Clear & Instant Update Button
         document.getElementById('btnForceOtaUpdate')?.addEventListener('click', async () => {
@@ -4588,7 +4596,10 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             targetUrl = targetUrl.replace('://arxiv.org/pdf/', '://export.arxiv.org/pdf/');
           }
 
+          State.pdfLog = State.pdfLog || [];
+          const customProxy = (State.hunterConfig.corsProxy || '').trim();
           const candidates = [
+            ...(customProxy ? [`${customProxy.replace(/\/+$/, '')}/?url=${encodeURIComponent(targetUrl)}`] : []),
             targetUrl,
             `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
             `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
@@ -4612,6 +4623,11 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
               return ab;
             } catch (err) {
               clearTimeout(timer);
+              try {
+                const h = new URL(url).hostname;
+                const via = (url === targetUrl) ? 'doğrudan' : 'vekil';
+                State.pdfLog.push(`${via} ${h}: ${err.name === 'AbortError' ? 'zaman aşımı' : err.message}`);
+              } catch (e2) {}
               throw err;
             }
           };
@@ -4667,6 +4683,7 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
 
           const cleanDoi = (paper?.doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
           const validDoi = cleanDoi.startsWith('10.') && cleanDoi !== '10.1016/mining.oa';
+          State.pdfLog = [];
 
           // Step 1: Try direct PDF URLs already known on the paper
           const directCandidates = [paper?.pdfDirectUrl, paper?.oaUrl].filter(Boolean);
@@ -4709,6 +4726,12 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
               }
             } catch (e) {}
 
+            // Bilinen açık erişim yayıncı PDF kalıpları
+            if (cleanDoi.startsWith('10.3389/')) discoveredUrls.push(`https://www.frontiersin.org/articles/${cleanDoi}/pdf`);
+            if (cleanDoi.startsWith('10.3390/')) discoveredUrls.push(`https://doi.org/${cleanDoi}`);
+            if (cleanDoi.startsWith('10.1371/')) discoveredUrls.push(`https://journals.plos.org/plosone/article/file?id=${cleanDoi}&type=printable`);
+            if (cleanDoi.startsWith('10.1186/')) discoveredUrls.push(`https://link.springer.com/content/pdf/${cleanDoi}.pdf`);
+
             // Europe PMC / PMC kopyası
             try {
               let pmcid = paper.pmcid;
@@ -4720,6 +4743,8 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
                 paper.pmcid = pmcid;
                 discoveredUrls.push(`https://europepmc.org/backend/ptpmcrender.fcgi?accid=${pmcid}&blobtype=pdf`);
                 discoveredUrls.push(`https://www.ncbi.nlm.nih.gov/pmc/articles/${pmcid}/pdf/`);
+                discoveredUrls.push(`https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/pdf/`);
+                discoveredUrls.push(`https://europepmc.org/articles/${pmcid}?pdf=render`);
               }
             } catch (e) {}
 
@@ -4855,6 +4880,11 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             statusMsg.innerHTML = `<i class="fa-solid fa-lock text-amber-400 mr-1"></i>Yayıncı PDF Koruması (Paywall / CORS) • Aşağıdaki seçeneklerle PDF'i elle bağlayabilirsiniz.`;
           }
           document.getElementById('pdfFailPanel')?.classList.remove('hidden');
+          const logEl = document.getElementById('pdfFailLog');
+          if (logEl) {
+            const lines = [...new Set(State.pdfLog || [])];
+            logEl.innerHTML = lines.length ? lines.map(l => `<div>${escapeHtml(l)}</div>`).join('') : '<div>Denenecek doğrudan PDF adresi bulunamadı.</div>';
+          }
           const pubLink = document.getElementById('linkPdfFailPublisher');
           if (pubLink) pubLink.href = getReliableSourceUrl(paper);
           await renderCurrentPdfPage();
@@ -5801,6 +5831,20 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
         }
         document.getElementById('inputHunterPdfFile').addEventListener('change', handlePdfFileInputForActivePaper);
         document.getElementById('inputPdfFailFile').addEventListener('change', handlePdfFileInputForActivePaper);
+        document.getElementById('btnPrintTextAsPdf').addEventListener('click', () => {
+          const p = State.activePaper;
+          if (!p) return;
+          const secs = p.fullTextSections || [];
+          const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${escapeHtml(p.trTitle || p.title)}</title>
+<style>body{font-family:Georgia,serif;line-height:1.6;margin:2cm;color:#111}h1{font-size:20px}h2{font-size:16px;margin-top:1.2em}.meta{color:#555;font-size:12px;margin-bottom:1em}table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px 8px}</style></head><body>
+<h1>${escapeHtml(p.trTitle || p.title)}</h1><div class="meta">${escapeHtml(p.authors)} • ${escapeHtml(p.journal)} (${escapeHtml(p.year)}) • DOI: ${escapeHtml(p.doi)}</div>
+${secs.map(sec => `<h2>${escapeHtml(sec.heading)}</h2>${marked.parse(sec.body || '')}`).join('')}
+<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`;
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          const w = window.open(URL.createObjectURL(blob), '_blank');
+          if (!w) showToast('Açılır pencere engellendi. Tarayıcıda bu site için açılır pencerelere izin verin.', 'error');
+          else showToast('Yazdırma penceresinde "PDF olarak kaydet" seçin.', 'info');
+        });
         document.getElementById('btnPdfFailRunHunter').addEventListener('click', () => {
           if (State.activePaper) runSixStageFullTextHunter(State.activePaper);
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5996,7 +6040,8 @@ AIzaSyDu34KOrnekGemini4`;
         document.getElementById('btnSaveHunterSettings').addEventListener('click', () => {
           State.hunterConfig = {
             email: document.getElementById('inputUnpaywallEmail').value.trim(),
-            customMirror: document.getElementById('inputCustomDoiMirror').value.trim()
+            customMirror: document.getElementById('inputCustomDoiMirror').value.trim(),
+            corsProxy: document.getElementById('inputCustomCorsProxy').value.trim()
           };
           Storage.set('ma_hunter_config', State.hunterConfig);
           showToast('Tam Metin Avcısı ayarları kaydedildi!', 'success');
