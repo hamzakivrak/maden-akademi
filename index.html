@@ -218,6 +218,7 @@
       font-weight: 600;
     }
 
+    .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: var(--bg-primary); }
@@ -234,78 +235,95 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-  <!-- TOP NAVIGATION BAR -->
-  <header class="theme-bg-secondary border-b theme-border sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
-      <!-- Brand -->
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl theme-accent-bg flex items-center justify-center font-bold text-lg shadow-md">
+  <!-- TOP NAVIGATION BAR (Strictly Single-Row, Sleek & Ergonomic) -->
+  <header class="theme-bg-secondary border-b theme-border sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-2.5 sm:px-6 h-13 py-1.5 flex items-center justify-between gap-1.5 flex-nowrap">
+      <!-- Left: Dynamic Back Button + Compact Brand -->
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <button id="btnGlobalBack" class="hidden tv-focusable w-8 h-8 rounded-lg theme-bg-card border theme-border flex items-center justify-center text-xs hover:border-amber-500" title="Önceki Ekrana Dön">
+          <i class="fa-solid fa-arrow-left theme-accent-text"></i>
+        </button>
+        <div class="w-8 h-8 rounded-lg theme-accent-bg flex items-center justify-center font-bold text-sm shadow">
           <i class="fa-solid fa-helmet-safety"></i>
         </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="font-extrabold text-lg tracking-tight">MadenAkademi <span class="theme-accent-text">AI</span></span>
-            <span class="text-[11px] px-2 py-0.5 rounded-full theme-accent-soft font-semibold">v4.0 Canlı PDF</span>
-            <button id="btnForceOtaUpdate" class="text-[11px] px-2 py-0.5 rounded-lg theme-bg-card border theme-border hover:border-amber-500 flex items-center gap-1" title="En son GitHub güncellemesini zorla çek">
-              <i class="fa-solid fa-arrows-rotate theme-accent-text"></i><span class="hidden md:inline">Güncelle</span>
-            </button>
+        <div class="hidden sm:flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-extrabold text-sm tracking-tight leading-none">MadenAkademi <span class="theme-accent-text">AI</span></span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded theme-accent-soft font-bold leading-none">v5.0</span>
           </div>
-          <p class="text-xs theme-text-secondary hidden md:block">Jeoistatistik, Tahkimat, Grizu &amp; İSG Akademik Makale ve Haber Motoru</p>
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <nav class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1" id="mainNav">
-        <button data-nav="discover" class="tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 theme-accent-bg">
-          <i class="fa-solid fa-compass"></i><span>Keşfet &amp; Ara</span>
+      <!-- Center: Single-Row Sleek Navigation Pills (Never wraps to a second line!) -->
+      <nav class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 flex-nowrap" id="mainNav">
+        <button data-nav="discover" class="tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap theme-accent-bg">
+          <i class="fa-solid fa-magnifying-glass"></i><span>Keşfet &amp; Ara</span>
         </button>
-        <button data-nav="reader" class="tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 theme-bg-card theme-text-primary border theme-border">
+        <button data-nav="reader" class="tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap theme-bg-card theme-text-primary border theme-border">
           <i class="fa-solid fa-book-open-reader"></i><span>Okuma &amp; AI</span>
           <span id="activePaperBadge" class="hidden w-2 h-2 rounded-full bg-emerald-400"></span>
         </button>
-        <button data-nav="compare" class="tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 theme-bg-card theme-text-primary border theme-border">
+        <button data-nav="compare" class="tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap theme-bg-card theme-text-primary border theme-border">
           <i class="fa-solid fa-table-columns"></i><span>Kıyasla</span>
-          <span id="compareCountBadge" class="text-[11px] px-1.5 py-0.2 rounded-full theme-accent-soft font-bold">0</span>
+          <span id="compareCountBadge" class="text-[10px] px-1.5 rounded-full theme-accent-soft font-bold">0</span>
         </button>
-        <button data-nav="library" class="tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 theme-bg-card theme-text-primary border theme-border">
+        <button data-nav="library" class="tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap theme-bg-card theme-text-primary border theme-border">
           <i class="fa-solid fa-briefcase"></i><span>Çantam</span>
-          <span id="libraryCountBadge" class="text-[11px] px-1.5 py-0.2 rounded-full theme-accent-soft font-bold">0</span>
+          <span id="libraryCountBadge" class="text-[10px] px-1.5 rounded-full theme-accent-soft font-bold">0</span>
         </button>
-        <button data-nav="settings" class="tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 theme-bg-card theme-text-primary border theme-border">
+        <button data-nav="settings" class="tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap theme-bg-card theme-text-primary border theme-border">
           <i class="fa-solid fa-sliders"></i><span>Ayarlar &amp; Key</span>
         </button>
-        <button data-nav="guide" class="tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 theme-bg-card theme-text-primary border theme-border">
-          <i class="fa-brands fa-github"></i><span class="hidden sm:inline">Kurulum Rehberi</span>
+        <button data-nav="guide" class="tv-focusable nav-btn px-2 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 whitespace-nowrap theme-bg-card theme-text-primary border theme-border" title="Kurulum Rehberi">
+          <i class="fa-brands fa-github"></i><span class="hidden lg:inline">Kurulum Rehberi</span>
         </button>
       </nav>
 
-      <!-- Quick Right Controls: Key Pool Indicator, Theme & TV Mode -->
-      <div class="flex items-center gap-2">
-        <button id="btnQuickKeyStatus" class="tv-focusable px-2.5 py-1.5 rounded-lg text-xs font-medium theme-bg-card border theme-border flex items-center gap-1.5" title="Aktif API Anahtar Havuzu">
+      <!-- Right: Single Compact Quick Appearance & Status Trigger (No second row!) -->
+      <div class="relative flex items-center gap-1 flex-shrink-0">
+        <button id="btnForceOtaUpdate" class="tv-focusable w-8 h-8 rounded-lg theme-bg-card border theme-border hover:border-amber-500 flex items-center justify-center text-xs" title="Son Güncellemeyi Çek">
+          <i class="fa-solid fa-arrows-rotate theme-accent-text"></i><span class="sr-only">Güncelle</span>
+        </button>
+        <button id="btnOpenQuickPrefs" class="tv-focusable px-2.5 h-8 rounded-lg theme-bg-card border theme-border hover:border-amber-500 flex items-center gap-1.5 text-xs font-semibold" title="Tema, Key Havuzu ve TV Modu">
           <span id="keyPoolDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
-          <span id="keyPoolSummary" class="hidden xl:inline">Key Havuzu: Hazır</span>
-          <i class="fa-solid fa-key theme-accent-text"></i>
+          <i class="fa-solid fa-palette theme-accent-text"></i>
+          <span class="hidden md:inline">Görünüm</span>
         </button>
 
-        <select id="quickThemeSelect" aria-label="Tema Seçimi" class="tv-focusable px-2.5 py-1.5 rounded-lg text-xs font-medium theme-bg-card theme-text-primary border theme-border cursor-pointer">
-          <option value="anthracite">🌑 Antrasit Maden</option>
-          <option value="emerald">🟢 Zümrüt Derin</option>
-          <option value="sepia">📜 Sepya Kağıt</option>
-          <option value="academic">☀️ Akademik Aydınlık</option>
-          <option value="midnight">🌌 Gece Laciverti</option>
-          <option value="oled">⚡ Yüksek Kontrast (TV)</option>
-          <option value="copper">🟠 Bakır Cevheri</option>
-          <option value="cyber">🔮 Siber Jeo</option>
-        </select>
-
-        <button id="btnToggleTvMode" class="tv-focusable px-2.5 py-1.5 rounded-lg text-xs font-semibold theme-bg-card border theme-border flex items-center gap-1" title="TV / Kumanda Modu">
-          <i class="fa-solid fa-tv"></i><span class="hidden sm:inline">TV</span>
-        </button>
+        <!-- Sleek Dropdown Popover for Theme, Key Status & TV Mode -->
+        <div id="quickPrefsPopover" class="hidden absolute right-0 top-11 w-64 theme-bg-elevated border-2 theme-border rounded-2xl shadow-2xl p-3 space-y-3 z-50 text-xs pop-in">
+          <div class="flex items-center justify-between border-b theme-border pb-2">
+            <span class="font-bold theme-accent-text"><i class="fa-solid fa-sparkles mr-1"></i>Hızlı Görünüm &amp; Durum</span>
+            <button id="btnCloseQuickPrefs" class="theme-text-secondary hover:theme-text-primary">✕</button>
+          </div>
+          <div class="space-y-1">
+            <label class="text-[11px] theme-text-secondary font-semibold">Renk Teması:</label>
+            <select id="quickThemeSelect" aria-label="Tema Seçimi" class="tv-focusable w-full px-2.5 py-1.5 rounded-xl text-xs font-medium theme-bg-card theme-text-primary border theme-border cursor-pointer">
+              <option value="anthracite">🌑 Antrasit Maden</option>
+              <option value="emerald">🟢 Zümrüt Derin</option>
+              <option value="sepia">📜 Sepya Kağıt</option>
+              <option value="academic">☀️ Akademik Aydınlık</option>
+              <option value="midnight">🌌 Gece Laciverti</option>
+              <option value="oled">⚡ Yüksek Kontrast (TV)</option>
+              <option value="copper">🟠 Bakır Cevheri</option>
+              <option value="cyber">🔮 Siber Jeo</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between gap-2 pt-1">
+            <button id="btnQuickKeyStatus" class="tv-focusable flex-1 px-2.5 py-1.5 rounded-xl text-xs font-medium theme-bg-card border theme-border flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-key theme-accent-text"></i>
+              <span id="keyPoolSummary" class="truncate">Key Havuzu: Hazır</span>
+            </button>
+            <button id="btnToggleTvMode" class="tv-focusable px-3 py-1.5 rounded-xl text-xs font-semibold theme-bg-card border theme-border flex items-center gap-1" title="TV / Kumanda Modu">
+              <i class="fa-solid fa-tv"></i><span>TV</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- FLOATING TEXT SELECTION POPUP FOR READER -->
+<!-- FLOATING TEXT SELECTION POPUP FOR READER -->
   <div id="selectionPopup" class="hidden fixed z-50 theme-bg-elevated border-2 theme-border rounded-xl shadow-2xl p-1.5 flex items-center gap-1 pop-in">
     <button data-sel-action="explain" class="px-2.5 py-1 rounded-lg text-xs font-semibold theme-accent-bg flex items-center gap-1">
       <i class="fa-solid fa-wand-magic-sparkles"></i> Açıkla
@@ -326,76 +344,75 @@
 
     <!-- ==================== VIEW 1: DISCOVER & SEARCH ==================== -->
     <section id="view-discover" class="space-y-5">
-      <!-- Search Hero Box -->
-      <div class="theme-bg-secondary border theme-border rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
-        <div class="flex flex-col lg:flex-row gap-3">
+      <!-- Compact Search Hero Box -->
+      <div class="theme-bg-secondary border theme-border rounded-2xl p-3 sm:p-4 shadow-md space-y-2.5">
+        <div class="flex flex-col sm:flex-row gap-2">
           <!-- Search Input -->
           <div class="flex-1 relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 theme-text-secondary"></i>
-            <input id="searchInput" type="text" placeholder="Örn: jeoistatistik kriging tenör tahmini, yeraltı kömür tahkimat, grizu erken uyarı, İSG..." class="tv-focusable w-full pl-10 pr-24 py-3 rounded-xl theme-bg-card theme-text-primary border theme-border text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-amber-500" />
-            <button id="btnVoiceSearch" class="tv-focusable absolute right-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg theme-text-secondary hover:theme-accent-text" title="Sesle Arama Yap">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 theme-text-secondary text-xs"></i>
+            <input id="searchInput" type="text" placeholder="Konu, makale veya haber ara (Örn: jeoistatistik, tahkimat, grizu, yapay zeka)..." class="tv-focusable w-full pl-9 pr-20 py-2.5 rounded-xl theme-bg-card theme-text-primary border theme-border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <button id="btnVoiceSearch" class="tv-focusable absolute right-12 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg theme-text-secondary hover:theme-accent-text" title="Sesle Arama Yap">
               <i class="fa-solid fa-microphone"></i>
             </button>
-            <button id="btnClearSearch" class="tv-focusable absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 text-xs theme-text-secondary hover:theme-text-primary">
+            <button id="btnClearSearch" class="tv-focusable absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-1 text-[11px] theme-text-secondary hover:theme-text-primary">
               Temizle
             </button>
           </div>
 
-          <!-- Search Mode Selector (Academic vs News vs Both) -->
-          <div class="flex flex-wrap sm:flex-nowrap gap-2">
-            <select id="searchSourceMode" class="tv-focusable px-3 py-2.5 rounded-xl theme-bg-card theme-text-primary border theme-border text-xs sm:text-sm font-medium">
-              <option value="all">📚+📰 Akademik + Güncel Haber</option>
-              <option value="academic">🎓 Sadece Akademik Makaleler</option>
-              <option value="news">📰 Sadece Güncel Haber &amp; Sektör</option>
-            </select>
-
-            <button id="btnExecuteSearch" class="tv-focusable px-5 py-2.5 rounded-xl theme-accent-bg font-bold text-sm flex items-center justify-center gap-2 shadow-md">
+          <div class="flex items-center gap-1.5">
+            <button id="btnExecuteSearch" class="tv-focusable flex-1 sm:flex-none px-4 py-2.5 rounded-xl theme-accent-bg font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow">
               <i class="fa-solid fa-bolt"></i><span>Ara &amp; İrdele</span>
+            </button>
+            <button id="btnToggleSearchFilters" class="tv-focusable px-3 py-2.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5 hover:border-amber-500" title="Arama Filtreleri & Dil Seçenekleri">
+              <i class="fa-solid fa-filter theme-accent-text"></i><span class="hidden md:inline">Filtreler</span>
             </button>
           </div>
         </div>
 
-        <!-- Filter Bar: Language, Display Translation, Sort, Full-Text Only -->
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t theme-border text-xs">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="theme-text-secondary font-semibold"><i class="fa-solid fa-globe mr-1"></i>Arama Kapsamı:</span>
-            <button data-lang-scope="all" class="tv-focusable lang-scope-btn px-2.5 py-1 rounded-lg theme-accent-bg font-semibold">🌍 Tüm Diller (Global + TR)</button>
-            <button data-lang-scope="tr" class="tv-focusable lang-scope-btn px-2.5 py-1 rounded-lg theme-bg-card border theme-border">🇹🇷 Sadece Türkçe Kaynaklar</button>
-            <button data-lang-scope="en" class="tv-focusable lang-scope-btn px-2.5 py-1 rounded-lg theme-bg-card border theme-border">🇬🇧 Sadece İngilizce Literatür</button>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2">
+        <!-- Collapsible Advanced Filters Drawer (Hidden by default to keep screen super clean!) -->
+        <div id="searchFiltersDrawer" class="hidden pt-2.5 border-t theme-border space-y-2.5 text-xs pop-in">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="theme-text-secondary font-semibold">Kapsam:</span>
+              <button data-lang-scope="all" class="tv-focusable lang-scope-btn px-2.5 py-1 rounded-lg theme-accent-bg font-semibold">🌍 Tüm Diller (Global + TR)</button>
+              <button data-lang-scope="tr" class="tv-focusable lang-scope-btn px-2.5 py-1 rounded-lg theme-bg-card border theme-border">🇹🇷 Sadece Türkçe Kaynaklar</button>
+              <button data-lang-scope="en" class="tv-focusable lang-scope-btn px-2.5 py-1 rounded-lg theme-bg-card border theme-border">🇬🇧 Sadece İngilizce Literatür</button>
+            </div>
             <label class="flex items-center gap-1.5 theme-bg-card px-2.5 py-1 rounded-lg border theme-border cursor-pointer">
               <input type="checkbox" id="chkOnlyFullText" class="rounded accent-amber-500" />
               <span>🔓 Sadece Tam Metni/PDF Açık Olanlar</span>
             </label>
+          </div>
 
-            <select id="sortOrderSelect" class="tv-focusable px-2.5 py-1 rounded-lg theme-bg-card theme-text-primary border theme-border">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <select id="searchSourceMode" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border text-xs">
+              <option value="all">📚+📰 Akademik + Güncel Haber</option>
+              <option value="academic">🎓 Sadece Akademik Makaleler</option>
+              <option value="news">📰 Sadece Güncel Haber &amp; Sektör</option>
+            </select>
+            <select id="sortOrderSelect" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border text-xs">
               <option value="relevance">🎯 İlgi Düzeyi + Güncellik</option>
               <option value="newest">🕒 En Güncel Çalışmalar (2026-2023)</option>
               <option value="citations">🏆 En Çok Atıf Alan (Klasikler)</option>
             </select>
-
-            <select id="displayLangMode" class="tv-focusable px-2.5 py-1 rounded-lg theme-bg-card theme-text-primary border theme-border" title="Sonuç Gösterim Dili">
+            <select id="displayLangMode" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border text-xs" title="Sonuç Gösterim Dili">
               <option value="bilingual">🇹🇷+🌍 Çift Dilli (TR Özet + Orijinal)</option>
               <option value="tr_auto">🇹🇷 Her Şeyi Otomatik Türkçeye Çevir</option>
               <option value="original">📄 Orijinal Dilde Göster (Tıklayınca Çevir)</option>
             </select>
           </div>
         </div>
-      </div>
 
-      <!-- Ready Topic Dials (Hazır Konu Kadranları) -->
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider theme-text-secondary flex items-center gap-2">
-            <i class="fa-solid fa-layer-group theme-accent-text"></i> Hazır Madencilik &amp; İSG Konu Kadranları (Tek Tıkla Canlı Tarama)
-          </h2>
-          <button id="btnAddCustomDial" class="text-xs theme-accent-text hover:underline font-medium flex items-center gap-1">
-            <i class="fa-solid fa-plus-circle"></i> Özel Kadran Ekle
+        <!-- Sleek Horizontal Scrollable Topic Pills (Hazır Konu Kadranları in 1 compact line!) -->
+        <div class="flex items-center gap-2 pt-1 border-t theme-border/60">
+          <span class="text-[11px] font-bold theme-accent-text whitespace-nowrap flex items-center gap-1">
+            <i class="fa-solid fa-compass"></i> Hızlı Konular:
+          </span>
+          <div id="topicDialsContainer" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1"></div>
+          <button id="btnAddCustomDial" class="text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 whitespace-nowrap flex-shrink-0" title="Özel Kadran Ekle">
+            <i class="fa-solid fa-plus theme-accent-text"></i> Özel Kadran Ekle
           </button>
         </div>
-        <div id="topicDialsContainer" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2"></div>
       </div>
 
       <!-- Results & News Split / Tabs -->
@@ -465,42 +482,71 @@
     </section>
 
     <!-- ==================== VIEW 2: INTERACTIVE READER & AI CO-PILOT ==================== -->
-    <section id="view-reader" class="hidden space-y-4">
-      <!-- Reader Top Toolbar -->
-      <div class="theme-bg-secondary border theme-border rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <button id="btnBackToSearch" class="tv-focusable px-3 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5">
-            <i class="fa-solid fa-arrow-left"></i> Sonuçlara Dön
+    <section id="view-reader" class="hidden space-y-3">
+      <!-- Unified Single-Row Reader Ribbon (Back + View Switcher Pills + Quick Actions Menu) -->
+      <div class="theme-bg-secondary border theme-border rounded-2xl px-2.5 py-2 flex items-center justify-between gap-2 sticky top-14 z-30 shadow-md">
+        <!-- Left: Back Button + 4 View Mode Pills -->
+        <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+          <button id="btnBackToSearch" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-bold flex items-center gap-1 flex-shrink-0 hover:border-amber-500" title="Sonuçlara Dön">
+            <i class="fa-solid fa-arrow-left theme-accent-text"></i><span class="hidden sm:inline">Sonuçlara Dön</span>
           </button>
-          <span id="readerCascadeBadge" class="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1">
-            <i class="fa-solid fa-shield-halved"></i> Tam Metin Avcısı: Kademe 1
-          </span>
+
+          <button data-reader-tab="text" class="tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap theme-accent-bg">
+            <i class="fa-solid fa-align-left mr-1"></i>Temiz Okuma Metni
+          </button>
+          <button data-reader-tab="pdfframe" class="tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap theme-bg-card border theme-border">
+            <i class="fa-solid fa-file-pdf text-red-400 mr-1"></i>Canlı PDF / Kaynak Görünümü
+          </button>
+          <button data-reader-tab="figures" class="tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap theme-bg-card border theme-border">
+            <i class="fa-solid fa-chart-pie mr-1"></i>Şekiller, Grafikler &amp; Tablolar
+          </button>
+          <button data-reader-tab="equations" class="tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap theme-bg-card border theme-border">
+            <i class="fa-solid fa-square-root-variable mr-1"></i>Formüller &amp; Hesaplayıcı
+          </button>
         </div>
 
-        <!-- Reader Controls: Font Size, TTS, Downloads, Save -->
-        <div class="flex flex-wrap items-center gap-1.5">
-          <button id="btnFontDec" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border text-xs" title="Yazıyı Küçült">A-</button>
-          <button id="btnFontInc" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-card border theme-border text-xs font-bold" title="Yazıyı Büyüt">A+</button>
-
-          <button id="btnTtsToggle" class="tv-focusable px-3 py-1.5 rounded-lg theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5" title="TV/Sesli Okuma Modu">
-            <i class="fa-solid fa-volume-high theme-accent-text"></i> <span id="ttsStatusLabel">Sesli Oku</span>
+        <!-- Right: Compact Action Icons + "Araçlar ▾" Popover Menu -->
+        <div class="relative flex items-center gap-1 flex-shrink-0">
+          <button id="btnTtsToggle" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1" title="Sesli Oku">
+            <i class="fa-solid fa-volume-high theme-accent-text"></i><span id="ttsStatusLabel" class="hidden md:inline">Sesli Oku</span>
           </button>
 
-          <button id="btnRunDeepHunter" class="tv-focusable px-3 py-1.5 rounded-lg theme-accent-bg text-xs font-bold flex items-center gap-1.5" title="6 Aşamalı Tam Metin Avcısını Çalıştır">
-            <i class="fa-solid fa-radar"></i> Tam Metin Avcısı (6 Kademe)
+          <button id="btnSaveCurrentToBag" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1" title="Çantaya Kaydet">
+            <i class="fa-solid fa-bookmark theme-accent-text"></i><span class="hidden xl:inline">Çantaya Kaydet</span>
           </button>
 
-          <a id="btnDirectPdfLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="tv-focusable px-3 py-1.5 rounded-lg theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5">
-            <i class="fa-solid fa-file-pdf text-red-400"></i> PDF Aç / İndir
-          </a>
-
-          <button id="btnExportMarkdown" class="tv-focusable px-3 py-1.5 rounded-lg theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5" title="Notlar ve Çeviriyle İndir">
-            <i class="fa-solid fa-download theme-accent-text"></i> Rapor İndir (.md)
+          <button id="btnToggleReaderToolsMenu" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-bold flex items-center gap-1 hover:border-amber-500" title="Okuma Araçları, Punto, Tam Metin Avcısı ve İndirme">
+            <i class="fa-solid fa-ellipsis-vertical theme-accent-text px-0.5"></i><span>Araçlar</span>
           </button>
 
-          <button id="btnSaveCurrentToBag" class="tv-focusable px-3 py-1.5 rounded-lg theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1.5">
-            <i class="fa-solid fa-bookmark theme-accent-text"></i> Çantaya Kaydet
-          </button>
+          <!-- Clean Dropdown for Font Size, 6-Stage Hunter, PDF Download & Markdown Export -->
+          <div id="readerToolsDropdown" class="hidden absolute right-0 top-11 w-72 theme-bg-elevated border-2 theme-border rounded-2xl shadow-2xl p-3 space-y-2.5 z-50 text-xs pop-in">
+            <div class="flex items-center justify-between border-b theme-border pb-1.5">
+              <span class="font-bold theme-accent-text">Okuma &amp; İndirme Araçları</span>
+              <span id="readerCascadeBadge" class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold truncate max-w-[150px]">Hazır</span>
+            </div>
+
+            <div class="flex items-center justify-between theme-bg-card px-3 py-2 rounded-xl border theme-border">
+              <span class="font-semibold">Yazı Boyutu (Punto):</span>
+              <div class="flex items-center gap-1.5">
+                <button id="btnFontDec" class="px-2.5 py-1 rounded-lg theme-bg-secondary border theme-border font-bold">A-</button>
+                <button id="btnFontInc" class="px-2.5 py-1 rounded-lg theme-bg-secondary border theme-border font-bold">A+</button>
+              </div>
+            </div>
+
+            <button id="btnRunDeepHunter" class="w-full px-3 py-2 rounded-xl theme-accent-bg font-bold flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-radar"></i> Tam Metin Avcısı (6 Kademe)
+            </button>
+
+            <div class="grid grid-cols-2 gap-1.5">
+              <a id="btnDirectPdfLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2.5 py-2 rounded-xl theme-bg-card border theme-border font-semibold flex items-center justify-center gap-1 hover:border-amber-500">
+                <i class="fa-solid fa-file-pdf text-red-400"></i> PDF Aç / İndir
+              </a>
+              <button id="btnExportMarkdown" class="px-2.5 py-2 rounded-xl theme-bg-card border theme-border font-semibold flex items-center justify-center gap-1 hover:border-amber-500">
+                <i class="fa-solid fa-download theme-accent-text"></i> Rapor İndir (.md)
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -515,50 +561,37 @@
         <div id="hunterStagesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 text-xs"></div>
       </div>
 
-      <!-- Main Split View: Left Reader (7 cols) + Right AI & Visuals (5 cols) -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <!-- Main Split View: Left Reader (7 cols) + Right AI Co-Pilot (5 cols on desktop, slide-up drawer on mobile!) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
-        <!-- Left Column: Clean Reader + Engineer TL;DR + Visuals Gallery -->
-        <div class="lg:col-span-7 space-y-4">
-          <!-- Article Header Card -->
-          <div class="theme-bg-secondary border theme-border rounded-2xl p-4 sm:p-6 space-y-3">
-            <div class="flex flex-wrap items-center gap-2 text-xs theme-text-secondary">
-              <span id="readerJournal" class="px-2.5 py-0.5 rounded-md theme-bg-card border theme-border font-semibold">International Journal of Rock Mechanics</span>
-              <span id="readerYear" class="px-2 py-0.5 rounded-md theme-accent-soft font-bold">2025</span>
-              <span id="readerCitations" class="px-2 py-0.5 rounded-md theme-bg-card border theme-border"><i class="fa-solid fa-quote-right mr-1"></i>42 Atıf</span>
-              <span id="readerDoiBadge" class="font-mono text-[11px] underline cursor-pointer">DOI: 10.1016/...</span>
+        <!-- Left Column: Compact Article Header + Active Content Tab -->
+        <div class="lg:col-span-7 space-y-3">
+          <!-- Compact Article Header Card with Collapsible 4-Point AI Summary -->
+          <div class="theme-bg-secondary border theme-border rounded-2xl p-3.5 sm:p-5 space-y-2">
+            <div class="flex flex-wrap items-center gap-1.5 text-[11px] theme-text-secondary">
+              <span id="readerJournal" class="px-2 py-0.5 rounded theme-bg-card border theme-border font-semibold">Academic Journal</span>
+              <span id="readerYear" class="px-2 py-0.5 rounded theme-accent-soft font-bold">2025</span>
+              <span id="readerCitations" class="px-2 py-0.5 rounded theme-bg-card border theme-border"><i class="fa-solid fa-quote-right mr-1"></i>0 Atıf</span>
+              <span id="readerDoiBadge" class="font-mono text-[10px] underline cursor-pointer truncate max-w-[180px]">DOI</span>
             </div>
-            <h1 id="readerTitle" class="text-lg sm:text-2xl font-extrabold leading-snug">Makale Başlığı</h1>
-            <p id="readerAuthors" class="text-xs sm:text-sm theme-text-secondary"></p>
+            <h1 id="readerTitle" class="text-base sm:text-xl font-extrabold leading-snug">Makale Başlığı</h1>
+            <p id="readerAuthors" class="text-xs theme-text-secondary line-clamp-1"></p>
 
-            <!-- 4-Point Mining Engineer Summary Card (Madenci Özeti) -->
-            <div class="theme-bg-card border-l-4 border-amber-500 rounded-xl p-3.5 sm:p-4 space-y-2.5">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-extrabold uppercase tracking-wider theme-accent-text flex items-center gap-1.5">
-                  <i class="fa-solid fa-helmet-safety"></i> 4 Maddelik Madenci Özeti (AI TL;DR)
-                </span>
-                <button id="btnRegenerateTldr" class="tv-focusable text-xs px-2.5 py-1 rounded-lg theme-accent-soft font-semibold flex items-center gap-1">
-                  <i class="fa-solid fa-rotate"></i> AI ile Derinleştir
-                </button>
+            <!-- Collapsible 4-Point AI Summary Accordion (Doesn't push reading area down unless clicked!) -->
+            <details id="readerTldrAccordion" class="theme-bg-card border-l-4 border-amber-500 rounded-xl p-2.5 text-xs group">
+              <summary class="font-bold theme-accent-text cursor-pointer flex items-center justify-between list-none">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> 4 Maddelik AI Makale Özeti (Problem, Yöntem, Bulgu, Uygulama)</span>
+                <span class="text-[11px] theme-text-secondary group-open:rotate-180 transition"><i class="fa-solid fa-chevron-down"></i></span>
+              </summary>
+              <div class="pt-2.5 mt-2 border-t theme-border space-y-2">
+                <div class="flex justify-end">
+                  <button id="btnRegenerateTldr" class="tv-focusable text-[11px] px-2.5 py-1 rounded-lg theme-accent-soft font-semibold flex items-center gap-1">
+                    <i class="fa-solid fa-rotate"></i> AI ile Derinleştir
+                  </button>
+                </div>
+                <div id="readerTldrGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"></div>
               </div>
-              <div id="readerTldrGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs"></div>
-            </div>
-          </div>
-
-          <!-- Inner Reader Tabs: Clean Text | Figures & Tables | Equations | Embedded PDF -->
-          <div class="flex items-center gap-1.5 overflow-x-auto">
-            <button data-reader-tab="text" class="tv-focusable reader-tab-btn px-3.5 py-2 rounded-xl text-xs font-bold theme-accent-bg">
-              <i class="fa-solid fa-align-left mr-1"></i> Temiz Okuma Metni
-            </button>
-            <button data-reader-tab="figures" class="tv-focusable reader-tab-btn px-3.5 py-2 rounded-xl text-xs font-semibold theme-bg-secondary border theme-border">
-              <i class="fa-solid fa-chart-pie mr-1"></i> Şekiller, Grafikler &amp; Tablolar
-            </button>
-            <button data-reader-tab="equations" class="tv-focusable reader-tab-btn px-3.5 py-2 rounded-xl text-xs font-semibold theme-bg-secondary border theme-border">
-              <i class="fa-solid fa-square-root-variable mr-1"></i> Formüller &amp; Hesaplayıcı
-            </button>
-            <button data-reader-tab="pdfframe" class="tv-focusable reader-tab-btn px-3.5 py-2 rounded-xl text-xs font-semibold theme-bg-secondary border theme-border">
-              <i class="fa-solid fa-file-pdf mr-1"></i> Canlı PDF / Kaynak Görünümü
-            </button>
+            </details>
           </div>
 
           <!-- Tab 1: Clean Reader Body -->
@@ -727,8 +760,13 @@
           </div>
         </div>
 
+        <!-- Floating Mobile AI Button (Jumps / Opens AI Advisor instantly on phones) -->
+        <button id="btnMobileJumpAi" class="lg:hidden fixed bottom-4 left-4 z-40 px-3.5 py-2.5 rounded-full theme-accent-bg font-bold text-xs shadow-2xl flex items-center gap-1.5">
+          <i class="fa-solid fa-robot"></i> <span>AI Danışman</span>
+        </button>
+
         <!-- Right Column: AI Co-Pilot (Groq / Llama 3.3 & Gemini Rotator) -->
-        <aside class="lg:col-span-5 theme-bg-secondary border theme-border rounded-2xl p-4 flex flex-col h-[760px] sticky top-16">
+        <aside id="readerAiAside" class="lg:col-span-5 theme-bg-secondary border theme-border rounded-2xl p-4 flex flex-col h-[660px] lg:h-[740px] sticky top-16">
           <div class="flex items-center justify-between pb-3 border-b theme-border">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-lg theme-accent-soft flex items-center justify-center">
@@ -2600,11 +2638,9 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         const container = document.getElementById('topicDialsContainer');
         if (!container) return;
         container.innerHTML = State.dials.map(d => `
-          <button data-dial-id="${d.id}" class="tv-focusable p-3 rounded-xl theme-bg-secondary border theme-border hover:border-amber-500 text-left transition flex flex-col justify-between gap-2 group">
-            <div class="w-8 h-8 rounded-lg theme-accent-soft flex items-center justify-center group-hover:scale-110 transition">
-              <i class="fa-solid ${d.icon || 'fa-compass'}"></i>
-            </div>
-            <div class="text-xs font-bold leading-tight line-clamp-2">${d.title}</div>
+          <button data-dial-id="${d.id}" class="tv-focusable px-3 py-1.5 rounded-xl theme-bg-card border theme-border hover:border-amber-500 text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition flex-shrink-0">
+            <i class="fa-solid ${d.icon || 'fa-compass'} theme-accent-text"></i>
+            <span>${d.title}</span>
           </button>
         `).join('');
 
@@ -3252,8 +3288,16 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         }
       }
 
-      // --- 17. VIEW NAVIGATION & BADGES ---
-      function switchView(viewName) {
+      // --- 17. VIEW NAVIGATION, HISTORY BACK STACK & BADGES ---
+      State.viewHistory = ['discover'];
+
+      function switchView(viewName, fromBackButton = false) {
+        if (!fromBackButton && State.currentView && State.currentView !== viewName) {
+          State.viewHistory.push(viewName);
+          try {
+            window.history.pushState({ view: viewName }, '', `#${viewName}`);
+          } catch (e) {}
+        }
         State.currentView = viewName;
         ['discover', 'reader', 'compare', 'library', 'settings', 'guide'].forEach(v => {
           const sec = document.getElementById('view-' + v);
@@ -3262,9 +3306,15 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         document.querySelectorAll('#mainNav .nav-btn').forEach(btn => {
           const active = btn.getAttribute('data-nav') === viewName;
           btn.className = active
-            ? 'tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 theme-accent-bg'
-            : 'tv-focusable nav-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 theme-bg-card theme-text-primary border theme-border';
+            ? 'tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap theme-accent-bg'
+            : 'tv-focusable nav-btn px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 whitespace-nowrap theme-bg-card theme-text-primary border theme-border';
         });
+
+        // Show top-left Global Back button whenever not on 'discover' home view
+        const backBtn = document.getElementById('btnGlobalBack');
+        if (backBtn) {
+          backBtn.classList.toggle('hidden', viewName === 'discover' && State.viewHistory.length <= 1);
+        }
 
         if (viewName === 'reader') renderReaderContent();
         if (viewName === 'compare') renderComparisonView();
@@ -3272,6 +3322,17 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         if (viewName === 'settings') {
           renderThemeCards();
           updateKeyPoolUI();
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function goBackView() {
+        if (State.viewHistory.length > 1) {
+          State.viewHistory.pop(); // remove current
+          const prev = State.viewHistory[State.viewHistory.length - 1] || 'discover';
+          switchView(prev, true);
+        } else {
+          switchView('discover', true);
         }
       }
 
@@ -3321,9 +3382,55 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           window.location.href = window.location.pathname + '?v=' + Date.now();
         });
 
-        // Top Navigation
+        // Top Navigation & Hardware Back Button Support
         document.querySelectorAll('#mainNav .nav-btn').forEach(btn => {
           btn.addEventListener('click', () => switchView(btn.getAttribute('data-nav')));
+        });
+        document.getElementById('btnGlobalBack')?.addEventListener('click', () => goBackView());
+        window.addEventListener('popstate', (ev) => {
+          const targetView = ev.state?.view || 'discover';
+          switchView(targetView, true);
+        });
+
+        // Quick Appearance Popover (Theme, Key Status, TV Mode)
+        const quickPopover = document.getElementById('quickPrefsPopover');
+        document.getElementById('btnOpenQuickPrefs')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          quickPopover?.classList.toggle('hidden');
+        });
+        document.getElementById('btnCloseQuickPrefs')?.addEventListener('click', () => {
+          quickPopover?.classList.add('hidden');
+        });
+
+        // Collapsible Search Filters Toggle
+        document.getElementById('btnToggleSearchFilters')?.addEventListener('click', () => {
+          document.getElementById('searchFiltersDrawer')?.classList.toggle('hidden');
+        });
+
+        // Reader Tools Dropdown Menu
+        const readerToolsDrop = document.getElementById('readerToolsDropdown');
+        document.getElementById('btnToggleReaderToolsMenu')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          readerToolsDrop?.classList.toggle('hidden');
+        });
+
+        // Close popovers when clicking outside
+        document.addEventListener('click', (e) => {
+          if (quickPopover && !quickPopover.contains(e.target) && e.target.id !== 'btnOpenQuickPrefs') {
+            quickPopover.classList.add('hidden');
+          }
+          if (readerToolsDrop && !readerToolsDrop.contains(e.target) && e.target.id !== 'btnToggleReaderToolsMenu') {
+            readerToolsDrop.classList.add('hidden');
+          }
+        });
+
+        // Mobile Floating "AI Danışman" Quick Jump Button
+        document.getElementById('btnMobileJumpAi')?.addEventListener('click', () => {
+          const asideEl = document.getElementById('readerAiAside');
+          if (asideEl) {
+            asideEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('aiChatInput')?.focus();
+          }
         });
 
         // Quick Key Status Button -> Jump to Settings
@@ -3673,7 +3780,7 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         });
 
         // Reader Toolbar Controls
-        document.getElementById('btnBackToSearch').addEventListener('click', () => switchView('discover'));
+        document.getElementById('btnBackToSearch').addEventListener('click', () => goBackView());
         document.getElementById('btnFontInc').addEventListener('click', () => {
           State.readerFontSize = Math.min(26, State.readerFontSize + 2);
           document.getElementById('readerArticleBody').style.fontSize = `${State.readerFontSize}px`;
@@ -4553,8 +4660,8 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             document.querySelectorAll('.reader-tab-btn').forEach(b => {
               const active = b.getAttribute('data-reader-tab') === tab;
               b.className = active
-                ? 'tv-focusable reader-tab-btn px-3.5 py-2 rounded-xl text-xs font-bold theme-accent-bg'
-                : 'tv-focusable reader-tab-btn px-3.5 py-2 rounded-xl text-xs font-semibold theme-bg-secondary border theme-border';
+                ? 'tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap theme-accent-bg'
+                : 'tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap theme-bg-card border theme-border';
             });
 
             if (tab === 'figures') renderReaderVisuals();
@@ -4776,7 +4883,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=4.5').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=5.0').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
