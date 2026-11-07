@@ -219,6 +219,24 @@
     }
 
     .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .pdf-fullscreen-active {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 60 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      padding: 0.5rem !important;
+      display: flex !important;
+      flex-direction: column !important;
+      background-color: #020617 !important;
+    }
+    .pdf-fullscreen-active #pdfCanvasViewport {
+      max-height: none !important;
+      flex: 1 !important;
+      height: 100% !important;
+    }
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: var(--bg-primary); }
@@ -565,7 +583,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
         <!-- Left Column: Compact Article Header + Active Content Tab -->
-        <div class="lg:col-span-7 space-y-3">
+        <div class="lg:col-span-12 space-y-3">
           <!-- Compact Article Header Card with Collapsible 4-Point AI Summary -->
           <div class="theme-bg-secondary border theme-border rounded-2xl p-3.5 sm:p-5 space-y-2">
             <div class="flex flex-wrap items-center gap-1.5 text-[11px] theme-text-secondary">
@@ -663,61 +681,65 @@
             <div id="readerEquationsList" class="space-y-3"></div>
           </div>
 
-          <!-- Tab 4: Native In-App PDF.js Canvas Viewer + Area Selection (Snipping) Tool -->
-          <div id="readerTabPdfFrame" class="hidden theme-bg-secondary border theme-border rounded-2xl p-4 space-y-3">
-            <!-- PDF Viewer Top Toolbar -->
-            <div class="flex flex-wrap items-center justify-between gap-2 theme-bg-card p-2.5 rounded-xl border theme-border text-xs">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <button id="btnPdfPrevPage" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold hover:border-amber-500" title="Önceki Sayfa">
-                  <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <span class="px-2 font-semibold">
-                  Sayfa <input id="inputPdfPageNum" type="number" min="1" value="1" class="w-12 text-center px-1 py-0.5 rounded theme-bg-secondary border theme-border font-bold" /> / <span id="spanPdfTotalPages">1</span>
+          <!-- Tab 4: Gesture-Driven Fullscreen PDF Viewer + Snipping Tool -->
+          <div id="readerTabPdfFrame" class="hidden theme-bg-secondary border theme-border rounded-2xl p-2 sm:p-3 space-y-2 relative">
+            <!-- Minimal Single-Line Gesture & Fullscreen Bar -->
+            <div class="flex items-center justify-between gap-1.5 theme-bg-card px-2.5 py-1.5 rounded-xl border theme-border text-xs">
+              <!-- Left: Compact Page Pill & Swipe Hint -->
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg theme-accent-soft font-bold flex items-center gap-1">
+                  <i class="fa-solid fa-book-open"></i>
+                  <input id="inputPdfPageNum" type="number" min="1" value="1" class="w-9 text-center bg-transparent font-extrabold focus:outline-none" />
+                  <span>/</span>
+                  <span id="spanPdfTotalPages">1</span>
                 </span>
-                <button id="btnPdfNextPage" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold hover:border-amber-500" title="Sonraki Sayfa">
-                  <i class="fa-solid fa-chevron-right"></i>
-                </button>
-
-                <span class="mx-1 theme-text-secondary">|</span>
-
-                <button id="btnPdfZoomOut" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border" title="Uzaklaştır">
-                  <i class="fa-solid fa-magnifying-glass-minus"></i>
-                </button>
-                <span id="spanPdfZoomLevel" class="font-mono text-[11px] px-1">125%</span>
-                <button id="btnPdfZoomIn" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border" title="Yakınlaştır">
-                  <i class="fa-solid fa-magnifying-glass-plus"></i>
-                </button>
+                <span id="spanPdfZoomLevel" class="font-mono text-[11px] theme-text-secondary hidden sm:inline">100%</span>
+                <span class="text-[11px] theme-text-secondary hidden md:inline">
+                  <i class="fa-solid fa-arrows-left-right mr-1 theme-accent-text"></i>Sağa/Sola Kaydır: Sayfa • İki Parmak/Çift Dokun: Zoom
+                </span>
               </div>
 
-              <!-- Snipping / Area Selection Mode & Quick PDF Upload -->
-              <div class="flex flex-wrap items-center gap-1.5">
-                <button id="btnTogglePdfSnipMode" class="tv-focusable px-3 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1.5 shadow">
-                  <i class="fa-solid fa-crop-simple theme-accent-text"></i> <span id="spanSnipModeText">Alan Seç &amp; AI'ya Sor: AÇIK</span>
+              <!-- Right: Essential Floating Controls (Snip, Fullscreen, Open PDF, More) -->
+              <div class="flex items-center gap-1">
+                <button id="btnTogglePdfSnipMode" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1 shadow">
+                  <i class="fa-solid fa-crop-simple theme-accent-text"></i>
+                  <span id="spanSnipModeText">Alan Seç &amp; AI'ya Sor: AÇIK</span>
                 </button>
-                <button id="btnRenderAllPdfPages" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-accent-soft font-bold flex items-center gap-1" title="Tüm Sayfaları Alt Alta Dök">
-                  <i class="fa-solid fa-layer-group"></i> Tüm Sayfaları Dök
+
+                <button id="btnTogglePdfFullscreen" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1 shadow" title="PDF Tam Ekran Modu">
+                  <i id="iconPdfFullscreen" class="fa-solid fa-expand"></i>
+                  <span id="spanPdfFullscreenText" class="hidden sm:inline">Tam Ekran</span>
                 </button>
-                <label class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold cursor-pointer flex items-center gap-1 hover:border-amber-500" title="Bilgisayardan/Telefondan PDF Aç">
-                  <i class="fa-solid fa-folder-open theme-accent-text"></i> PDF Seç
+
+                <label class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold cursor-pointer flex items-center gap-1 hover:border-amber-500" title="Cihazdan PDF Aç">
+                  <i class="fa-solid fa-folder-open theme-accent-text"></i>
+                  <span class="hidden sm:inline">PDF Seç</span>
                   <input id="inputDirectPdfViewerFile" type="file" accept=".pdf" class="hidden" />
                 </label>
-                <a id="readerExternalFallbackLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold hover:border-amber-500" title="Orijinal Kaynak Bağlantısı">
-                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                </a>
+
+                <button id="btnTogglePdfExtraTools" class="tv-focusable px-2 py-1.5 rounded-lg theme-bg-secondary border theme-border hover:border-amber-500" title="Ek PDF Kontrolleri">
+                  <i class="fa-solid fa-sliders theme-accent-text"></i>
+                </button>
               </div>
             </div>
 
-            <!-- PDF Loading Progress & Source Status Bar -->
-            <div id="pdfViewerLoadingBar" class="px-3 py-2 rounded-xl theme-bg-card border theme-border text-xs flex flex-wrap items-center justify-between gap-2">
-              <span id="pdfViewerStatusMsg" class="font-semibold theme-accent-text"><i class="fa-solid fa-satellite-dish mr-1"></i>Orijinal PDF kaynağı hazırlanıyor...</span>
-              <div class="flex items-center gap-1.5">
+            <!-- Collapsible Extra PDF Controls Drawer (Hidden by default so toolbar stays zero-clutter!) -->
+            <div id="pdfViewerLoadingBar" class="hidden px-3 py-2 rounded-xl theme-bg-card border theme-border text-xs flex flex-wrap items-center justify-between gap-2 pop-in">
+              <span id="pdfViewerStatusMsg" class="font-semibold theme-accent-text truncate max-w-xs"><i class="fa-solid fa-satellite-dish mr-1"></i>Hazır</span>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button id="btnPdfPrevPage" class="px-2 py-1 rounded-lg theme-bg-secondary border theme-border font-bold" title="Önceki Sayfa"><i class="fa-solid fa-chevron-left"></i></button>
+                <button id="btnPdfNextPage" class="px-2 py-1 rounded-lg theme-bg-secondary border theme-border font-bold" title="Sonraki Sayfa"><i class="fa-solid fa-chevron-right"></i></button>
+                <button id="btnPdfZoomOut" class="px-2 py-1 rounded-lg theme-bg-secondary border theme-border" title="Uzaklaştır"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <button id="btnPdfZoomIn" class="px-2 py-1 rounded-lg theme-bg-secondary border theme-border" title="Yakınlaştır"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button id="btnRenderAllPdfPages" class="px-2.5 py-1 rounded-lg theme-accent-soft font-bold flex items-center gap-1"><i class="fa-solid fa-layer-group"></i> Tüm Sayfaları Dök</button>
                 <button id="btnTranslateCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-accent-bg font-bold">Bu Sayfayı Çevir</button>
                 <button id="btnSummarizeCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-bg-secondary theme-text-primary border theme-border font-semibold">Bu Sayfayı Özetle</button>
+                <a id="readerExternalFallbackLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-lg theme-bg-secondary border theme-border"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
               </div>
             </div>
 
             <!-- Selected Region Action Bar (Appears right after drawing a box on the PDF!) -->
-            <div id="pdfSnipActionBar" class="hidden theme-bg-elevated border-2 border-amber-500 rounded-xl p-3 space-y-2 pop-in">
+            <div id="pdfSnipActionBar" class="hidden theme-bg-elevated border-2 border-amber-500 rounded-xl p-3 space-y-2 pop-in z-30">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2 text-xs font-bold theme-accent-text">
                   <i class="fa-solid fa-vector-square"></i>
@@ -745,66 +767,82 @@
               </div>
             </div>
 
-            <!-- Interactive PDF Canvas Stage (Responsive Mobile & Desktop Fit) -->
-            <div id="pdfCanvasViewport" class="relative w-full max-h-[75vh] overflow-auto rounded-xl border theme-border bg-slate-950/95 p-2 sm:p-4 select-none">
-              <div id="pdfStageWrapper" class="relative mx-auto shadow-2xl" style="width: fit-content;">
+            <!-- Interactive PDF Canvas Stage (Swipe Left/Right to Turn Pages, Pinch/Double-Tap to Zoom!) -->
+            <div id="pdfCanvasViewport" class="relative w-full max-h-[80vh] overflow-auto rounded-xl border theme-border bg-slate-950/95 p-1.5 sm:p-4 select-none">
+              <div id="pdfStageWrapper" class="relative mx-auto shadow-2xl transition-transform duration-150" style="width: fit-content;">
                 <canvas id="pdfRenderCanvas" class="block bg-white rounded shadow-lg"></canvas>
-                <!-- Interactive Selection Overlay Canvas (pointer-events controlled by snipMode) -->
                 <canvas id="pdfSnipOverlayCanvas" class="absolute inset-0 cursor-crosshair" style="pointer-events: none;"></canvas>
               </div>
               <!-- Container for "Tüm Sayfaları Alt Alta Dök" continuous mode -->
               <div id="pdfAllPagesStack" class="hidden space-y-4 mt-2"></div>
             </div>
-            <!-- Keep hidden iframe only so any legacy ID reference never breaks -->
             <div id="readerPdfIframe" class="hidden"></div>
           </div>
         </div>
 
-        <!-- Floating Mobile AI Button (Jumps / Opens AI Advisor instantly on phones) -->
-        <button id="btnMobileJumpAi" class="lg:hidden fixed bottom-4 left-4 z-40 px-3.5 py-2.5 rounded-full theme-accent-bg font-bold text-xs shadow-2xl flex items-center gap-1.5">
-          <i class="fa-solid fa-robot"></i> <span>AI Danışman</span>
-        </button>
+        <!-- Floating AI Co-Pilot Button (Works on all screens, shows live background spinner & unread ready badge!) -->
+        <div class="fixed bottom-4 left-4 z-50 flex items-center gap-1.5">
+          <button id="btnMobileJumpAi" class="px-4 py-3 rounded-full theme-accent-bg font-extrabold text-xs sm:text-sm shadow-2xl flex items-center gap-2 border-2 border-white/20 transition transform hover:scale-105">
+            <i id="aiFabIcon" class="fa-solid fa-robot text-base"></i>
+            <span id="aiFabLabel">AI Danışman</span>
+          </button>
+          <span id="aiFabUnreadBadge" class="hidden px-2.5 py-1.5 rounded-full bg-emerald-500 text-white text-xs font-extrabold shadow-lg animate-bounce cursor-pointer">Yanıt Hazır!</span>
+        </div>
 
-        <!-- Right Column: AI Co-Pilot (Groq / Llama 3.3 & Gemini Rotator) -->
-        <aside id="readerAiAside" class="lg:col-span-5 theme-bg-secondary border theme-border rounded-2xl p-4 flex flex-col h-[660px] lg:h-[740px] sticky top-16">
-          <div class="flex items-center justify-between pb-3 border-b theme-border">
+        <!-- Floating Pop-up AI Co-Pilot Window (Opens in-place without scrolling the page, continues working in background when minimized!) -->
+        <aside id="readerAiAside" class="hidden fixed bottom-16 left-3 right-3 sm:left-4 sm:right-auto sm:w-[440px] z-50 theme-bg-secondary border-2 border-amber-500/70 rounded-2xl p-3.5 flex flex-col h-[72vh] max-h-[580px] shadow-2xl pop-in">
+          <div class="flex items-center justify-between pb-2.5 border-b theme-border">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-lg theme-accent-soft flex items-center justify-center">
                 <i class="fa-solid fa-robot"></i>
               </div>
               <div>
-                <h3 class="font-bold text-sm">Yapay Zeka Makale Danışmanı</h3>
-                <p id="activeAiModelLabel" class="text-[11px] theme-text-secondary">Motor: Önce Gemini Havuzu ➔ Yedek Groq (Llama 3.3 70B)</p>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-bold text-xs sm:text-sm">Yapay Zeka Makale Danışmanı</h3>
+                  <span id="aiPopupWorkingBadge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i>Çalışıyor...
+                  </span>
+                </div>
+                <p id="activeAiModelLabel" class="text-[10px] theme-text-secondary">Arka planda çalışabilir • Yanıt gelince haber verir</p>
               </div>
             </div>
-            <button id="btnClearAiChat" class="text-xs theme-text-secondary hover:theme-text-primary" title="Sohbeti Temizle">
-              <i class="fa-solid fa-broom"></i>
-            </button>
+            <div class="flex items-center gap-1.5">
+              <label class="flex items-center gap-1 text-[10px] theme-text-secondary cursor-pointer mr-1" title="Yanıt hazır olduğunda pencereyi otomatik aç">
+                <input type="checkbox" id="chkAutoOpenAiOnReply" checked class="rounded accent-amber-500" />
+                <span>Oto-Aç</span>
+              </label>
+              <button id="btnClearAiChat" class="px-2 py-1 rounded-lg theme-bg-card border theme-border text-xs theme-text-secondary hover:theme-text-primary" title="Sohbeti Temizle">
+                <i class="fa-solid fa-broom"></i>
+              </button>
+              <button id="btnMinimizeAiPopup" class="px-2.5 py-1 rounded-lg theme-accent-soft font-bold text-xs flex items-center gap-1" title="Pencereyi Küçült (Arka Planda Çalışmaya Devam Eder)">
+                <i class="fa-solid fa-chevron-down"></i><span>Küçült</span>
+              </button>
+            </div>
           </div>
 
           <!-- Quick Prompt Chips -->
-          <div class="flex flex-wrap gap-1.5 py-2.5 border-b theme-border">
-            <button data-quick-ask="Bu makalenin metodolojisini ve sahada nasıl uygulanacağını adım adım Türkçe anlat." class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500">
+          <div class="flex items-center gap-1.5 py-2 border-b theme-border overflow-x-auto no-scrollbar">
+            <button data-quick-ask="Bu makalenin metodolojisini ve sahada nasıl uygulanacağını adım adım Türkçe anlat." class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 whitespace-nowrap flex-shrink-0">
               🛠️ Metodoloji &amp; Saha Uygulaması
             </button>
-            <button data-quick-ask="Bu çalışmadaki sayısal bulguları, avantajları ve kısıtları Markdown tablosu olarak çıkar." class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500">
+            <button data-quick-ask="Bu çalışmadaki sayısal bulguları, avantajları ve kısıtları Markdown tablosu olarak çıkar." class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 whitespace-nowrap flex-shrink-0">
               📊 Bulguları Tablolaştır
             </button>
-            <button data-quick-ask="Bu makaledeki matematiksel formülleri ve değişkenleri mühendislik açısından sadeleştirerek açıkla." class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500">
+            <button data-quick-ask="Bu makaledeki matematiksel formülleri ve değişkenleri mühendislik açısından sadeleştirerek açıkla." class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 whitespace-nowrap flex-shrink-0">
               📐 Formülleri Açıkla
             </button>
-            <button data-quick-ask="Bu çalışmanın Türkiye'deki yeraltı kömür veya metal madenlerinde İSG ve verimlilik açısından önemi nedir?" class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500">
+            <button data-quick-ask="Bu çalışmanın Türkiye'deki yeraltı kömür veya metal madenlerinde İSG ve verimlilik açısından önemi nedir?" class="tv-focusable quick-ask-chip text-[11px] px-2.5 py-1 rounded-lg theme-bg-card border theme-border hover:border-amber-500 whitespace-nowrap flex-shrink-0">
               🇹🇷 Türkiye Madenciliği İçin Önemi
             </button>
           </div>
 
           <!-- Chat Messages Area -->
-          <div id="aiChatMessages" class="flex-1 overflow-y-auto py-3 space-y-3 pr-1 text-xs sm:text-sm"></div>
+          <div id="aiChatMessages" class="flex-1 overflow-y-auto py-2.5 space-y-2.5 pr-1 text-xs sm:text-sm"></div>
 
           <!-- Chat Input -->
-          <div class="pt-3 border-t theme-border space-y-2">
+          <div class="pt-2.5 border-t theme-border">
             <div class="flex gap-2">
-              <textarea id="aiChatInput" rows="2" placeholder="Makalede anlamadığınız yeri, jeoistatistik/tahkimat/grizu detayını sorun..." class="tv-focusable flex-1 px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+              <textarea id="aiChatInput" rows="2" placeholder="Sorunuzu yazıp gönderin; pencereyi küçültseniz bile arka planda hazırlanır..." class="tv-focusable flex-1 px-3 py-2 rounded-xl theme-bg-card theme-text-primary border theme-border text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
               <button id="btnSendAiChat" class="tv-focusable px-4 rounded-xl theme-accent-bg font-bold text-sm flex items-center justify-center">
                 <i class="fa-solid fa-paper-plane"></i>
               </button>
@@ -3042,18 +3080,61 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         return `Özet: ${(paper.abstract || '').slice(0, 800)}\n\nİlgili Bölümler:\n${chosen}`;
       }
 
+      function toggleAiPopupWindow(forceState = null) {
+        const aside = document.getElementById('readerAiAside');
+        const unreadBadge = document.getElementById('aiFabUnreadBadge');
+        if (!aside) return;
+        const willOpen = forceState !== null ? forceState : aside.classList.contains('hidden');
+        aside.classList.toggle('hidden', !willOpen);
+        if (willOpen) {
+          unreadBadge?.classList.add('hidden');
+        }
+      }
+
       async function handleAskAi(promptText, optionalImageBase64 = null, explicitContext = null) {
         const q = (promptText || document.getElementById('aiChatInput').value || '').trim();
         if (!q) return;
         document.getElementById('aiChatInput').value = '';
+
+        // Show user message in chat & set background working indicators
         appendAiMessage('user', q);
+
+        const fabIcon = document.getElementById('aiFabIcon');
+        const fabLabel = document.getElementById('aiFabLabel');
+        const unreadBadge = document.getElementById('aiFabUnreadBadge');
+        const workBadge = document.getElementById('aiPopupWorkingBadge');
+        const aside = document.getElementById('readerAiAside');
+
+        if (fabIcon) fabIcon.className = 'fa-solid fa-circle-notch fa-spin text-base';
+        if (fabLabel) fabLabel.textContent = 'AI Çalışıyor...';
+        if (workBadge) workBadge.classList.remove('hidden');
+        if (unreadBadge) unreadBadge.classList.add('hidden');
 
         const p = State.activePaper;
         const smartContext = explicitContext || selectRelevantContextForQuestion(p, q);
         const sysPrompt = `Sen incelenen makalenin bilim dalında uzman kıdemli bir Akademisyen ve Başaraştırmacısın. İncelenen makale: "${p?.title || ''}" (${p?.year || ''}, Dergi: ${p?.journal || ''}). Seçili Bağlam: ${smartContext}. Yanıtlarını her zaman anlaşılır, bilimsel olarak tam doğru ve Markdown tabloları/maddeleri kullanarak ver.`;
 
-        const res = await callAiWithKeyRotation(sysPrompt, q, optionalImageBase64);
-        appendAiMessage('assistant', res.text, res.usedKey);
+        try {
+          const res = await callAiWithKeyRotation(sysPrompt, q, optionalImageBase64);
+          appendAiMessage('assistant', res.text, res.usedKey);
+
+          const isMinimized = aside && aside.classList.contains('hidden');
+          const autoOpen = document.getElementById('chkAutoOpenAiOnReply')?.checked;
+
+          if (isMinimized) {
+            if (autoOpen) {
+              toggleAiPopupWindow(true);
+              showToast('AI Danışmanı yanıtı hazırladı ve pencereyi açtı!', 'success');
+            } else {
+              if (unreadBadge) unreadBadge.classList.remove('hidden');
+              showToast('AI yanıtı arka planda hazırlandı! Sol alttaki AI Danışman butonuna basarak okuyabilirsiniz.', 'success');
+            }
+          }
+        } finally {
+          if (fabIcon) fabIcon.className = 'fa-solid fa-robot text-base';
+          if (fabLabel) fabLabel.textContent = 'AI Danışman';
+          if (workBadge) workBadge.classList.add('hidden');
+        }
       }
 
       // --- 14. COMPARISON & SYNTHESIS VIEW ---
@@ -3424,12 +3505,185 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           }
         });
 
-        // Mobile Floating "AI Danışman" Quick Jump Button
-        document.getElementById('btnMobileJumpAi')?.addEventListener('click', () => {
-          const asideEl = document.getElementById('readerAiAside');
-          if (asideEl) {
-            asideEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            document.getElementById('aiChatInput')?.focus();
+        // Floating Pop-up AI Co-Pilot Toggle & Minimize Buttons (Never scrolls away from current reading position!)
+        document.getElementById('btnMobileJumpAi')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleAiPopupWindow();
+        });
+        document.getElementById('btnMinimizeAiPopup')?.addEventListener('click', () => {
+          toggleAiPopupWindow(false);
+          showToast('AI penceresi küçültüldü. Okumanıza devam edebilirsiniz, yanıt gelince bildirim verilir.', 'info');
+        });
+
+        // Toggle Extra PDF Tools Drawer
+        document.getElementById('btnTogglePdfExtraTools')?.addEventListener('click', () => {
+          document.getElementById('pdfViewerLoadingBar')?.classList.toggle('hidden');
+        });
+
+        // Fullscreen Toggle for PDF Viewer (Works on Mobile & PC!)
+        document.getElementById('btnTogglePdfFullscreen')?.addEventListener('click', async () => {
+          const pdfFrameEl = document.getElementById('readerTabPdfFrame');
+          const iconEl = document.getElementById('iconPdfFullscreen');
+          const txtEl = document.getElementById('spanPdfFullscreenText');
+          if (!pdfFrameEl) return;
+
+          const isCssFull = pdfFrameEl.classList.contains('pdf-fullscreen-active');
+          if (!isCssFull) {
+            pdfFrameEl.classList.add('pdf-fullscreen-active');
+            if (iconEl) iconEl.className = 'fa-solid fa-compress';
+            if (txtEl) txtEl.textContent = 'Tam Ekrandan Çık';
+            try {
+              if (pdfFrameEl.requestFullscreen) await pdfFrameEl.requestFullscreen();
+            } catch (e) {}
+            setTimeout(() => renderCurrentPdfPage(), 120);
+            showToast('Tam ekran PDF modu: Sağa/sola kaydırarak sayfa değiştirebilir, iki parmakla yakınlaştırabilirsiniz.', 'info');
+          } else {
+            pdfFrameEl.classList.remove('pdf-fullscreen-active');
+            if (iconEl) iconEl.className = 'fa-solid fa-expand';
+            if (txtEl) txtEl.textContent = 'Tam Ekran';
+            try {
+              if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+            } catch (e) {}
+            setTimeout(() => renderCurrentPdfPage(), 120);
+          }
+        });
+
+        // Swipe Left/Right Page Turning + Pinch-to-Zoom + Double-Tap Zoom on #pdfCanvasViewport
+        const pdfViewportEl = document.getElementById('pdfCanvasViewport');
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let initialPinchDist = null;
+        let initialPinchScale = 1.0;
+        let lastTapTime = 0;
+
+        function getTouchDistance(touches) {
+          const dx = touches[0].clientX - touches[1].clientX;
+          const dy = touches[0].clientY - touches[1].clientY;
+          return Math.hypot(dx, dy);
+        }
+
+        if (pdfViewportEl) {
+          pdfViewportEl.addEventListener('touchstart', (e) => {
+            const pv = State.pdfViewer;
+            if (pv.snipMode || pv.viewMode === 'stack') return;
+
+            if (e.touches.length === 2) {
+              initialPinchDist = getTouchDistance(e.touches);
+              initialPinchScale = pv.scale;
+              return;
+            }
+
+            if (e.touches.length === 1) {
+              touchStartX = e.touches[0].clientX;
+              touchStartY = e.touches[0].clientY;
+              touchStartTime = Date.now();
+            }
+          }, { passive: true });
+
+          pdfViewportEl.addEventListener('touchmove', (e) => {
+            const pv = State.pdfViewer;
+            if (pv.snipMode || pv.viewMode === 'stack') return;
+
+            if (e.touches.length === 2 && initialPinchDist) {
+              if (e.cancelable) e.preventDefault();
+              const newDist = getTouchDistance(e.touches);
+              const ratio = newDist / initialPinchDist;
+              const nextScale = Math.min(2.75, Math.max(0.75, initialPinchScale * ratio));
+              document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(nextScale * 100)}%`;
+              const wrapper = document.getElementById('pdfStageWrapper');
+              if (wrapper) {
+                wrapper.style.transform = `scale(${(nextScale / pv.scale).toFixed(2)})`;
+                wrapper.style.transformOrigin = 'top center';
+              }
+            }
+          }, { passive: false });
+
+          pdfViewportEl.addEventListener('touchend', (e) => {
+            const pv = State.pdfViewer;
+            if (pv.snipMode || pv.viewMode === 'stack') return;
+
+            // Finish Pinch-to-Zoom and re-render crisp high-DPI canvas at new zoom level
+            if (initialPinchDist && e.touches.length < 2) {
+              const wrapper = document.getElementById('pdfStageWrapper');
+              if (wrapper && wrapper.style.transform) {
+                const match = wrapper.style.transform.match(/scale\(([^)]+)\)/);
+                if (match) {
+                  const factor = parseFloat(match[1]) || 1;
+                  pv.scale = Math.min(2.75, Math.max(0.75, Math.round(pv.scale * factor * 20) / 20));
+                }
+                wrapper.style.transform = '';
+                renderCurrentPdfPage();
+              }
+              initialPinchDist = null;
+              return;
+            }
+
+            if (e.changedTouches.length === 1) {
+              const now = Date.now();
+              const dx = e.changedTouches[0].clientX - touchStartX;
+              const dy = e.changedTouches[0].clientY - touchStartY;
+              const dt = now - touchStartTime;
+
+              // Double-tap to toggle Zoom (100% <-> 165%)
+              if (Math.abs(dx) < 15 && Math.abs(dy) < 15 && dt < 250) {
+                if (now - lastTapTime < 320) {
+                  pv.scale = pv.scale > 1.2 ? 1.0 : 1.65;
+                  renderCurrentPdfPage();
+                  showToast(`Yakınlaştırma: %${Math.round(pv.scale * 100)}`, 'info');
+                  lastTapTime = 0;
+                  return;
+                }
+                lastTapTime = now;
+              }
+
+              // Horizontal Swipe Left/Right to change page (when not zoomed in horizontally scrolling, or fast swipe)
+              if (dt < 550 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4 && pv.scale <= 1.15) {
+                if (dx < 0 && pv.pageNum < pv.totalPages) {
+                  pv.pageNum++;
+                  renderCurrentPdfPage();
+                  pdfViewportEl.scrollTop = 0;
+                  showToast(`Sayfa ${pv.pageNum} / ${pv.totalPages}`, 'info');
+                } else if (dx > 0 && pv.pageNum > 1) {
+                  pv.pageNum--;
+                  renderCurrentPdfPage();
+                  pdfViewportEl.scrollTop = 0;
+                  showToast(`Sayfa ${pv.pageNum} / ${pv.totalPages}`, 'info');
+                }
+              }
+            }
+          });
+
+          // Desktop Ctrl+Wheel Zoom & Left/Right Arrow Key Page Turn
+          pdfViewportEl.addEventListener('wheel', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              const pv = State.pdfViewer;
+              pv.scale = e.deltaY < 0
+                ? Math.min(2.75, pv.scale + 0.15)
+                : Math.max(0.75, pv.scale - 0.15);
+              renderCurrentPdfPage();
+            }
+          }, { passive: false });
+        }
+
+        window.addEventListener('keydown', (e) => {
+          if (State.currentView !== 'reader') return;
+          const pdfTabVisible = !document.getElementById('readerTabPdfFrame')?.classList.contains('hidden');
+          if (!pdfTabVisible) return;
+          if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+
+          if (e.key === 'ArrowRight' && State.pdfViewer.pageNum < State.pdfViewer.totalPages) {
+            State.pdfViewer.pageNum++;
+            renderCurrentPdfPage();
+          } else if (e.key === 'ArrowLeft' && State.pdfViewer.pageNum > 1) {
+            State.pdfViewer.pageNum--;
+            renderCurrentPdfPage();
+          } else if (e.key === 'Escape') {
+            const pdfFrameEl = document.getElementById('readerTabPdfFrame');
+            if (pdfFrameEl?.classList.contains('pdf-fullscreen-active')) {
+              document.getElementById('btnTogglePdfFullscreen')?.click();
+            }
           }
         });
 
@@ -4883,7 +5137,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=5.0').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=5.5').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
