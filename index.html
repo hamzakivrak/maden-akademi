@@ -727,6 +727,10 @@
 
               <!-- Right: Essential Floating Controls (Snip, Fullscreen, Open PDF, More) -->
               <div class="flex items-center gap-1">
+                <button id="btnTogglePdfTranslate" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1 shadow" title="Sayfadaki metni ücretsiz olarak Türkçeye çevirip PDF üzerinde gösterir (resim, şekil ve tablo çizgileri bozulmaz)">
+                  <i class="fa-solid fa-language text-emerald-400"></i>
+                  <span id="spanPdfTranslateText" class="hidden sm:inline">Türkçe Göster</span>
+                </button>
                 <button id="btnTogglePdfSnipMode" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1 shadow">
                   <i class="fa-solid fa-crop-simple theme-accent-text"></i>
                   <span id="spanSnipModeText">Alan Seç &amp; AI'ya Sor: AÇIK</span>
@@ -811,6 +815,7 @@
             <div id="pdfCanvasViewport" class="relative w-full max-h-[80vh] overflow-auto rounded-xl border theme-border bg-slate-950/95 p-1.5 sm:p-4 select-none">
               <div id="pdfStageWrapper" class="relative mx-auto shadow-2xl transition-transform duration-150" style="width: fit-content;">
                 <canvas id="pdfRenderCanvas" class="block bg-white rounded shadow-lg"></canvas>
+                <canvas id="pdfTranslateOverlayCanvas" class="absolute inset-0" style="pointer-events: none;"></canvas>
                 <canvas id="pdfSnipOverlayCanvas" class="absolute inset-0 cursor-crosshair" style="pointer-events: none;"></canvas>
               </div>
               <!-- Container for "Tüm Sayfaları Alt Alta Dök" continuous mode -->
@@ -5316,7 +5321,230 @@ ${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 48
             );
             ctx.restore();
           }
+          applyPdfTranslateOverlay();
         }
+
+        // ===== PDF ÜZERİNDE ÜCRETSİZ TÜRKÇE ÇEVİRİ KATMANI =====
+        // Orijinal sayfa olduğu gibi kalır; yalnızca metin blokları kapatılıp üzerine Türkçe yazılır.
+        // Resimler, şekiller, tablo çizgileri ve formüller (harf oranı düşük bloklar) dokunulmadan kalır.
+        State.pdfTranslateCache = State.pdfTranslateCache || new Map();
+        let pdfOverlayJob = 0;
+
+        function buildPdfTextBlocks(pv) {
+          const vp = pv.currentPageViewport;
+          if (!vp || !window.pdfjsLib) return [];
+          const util = window.pdfjsLib.Util;
+          const raw = [];
+          for (const it of (pv.currentPageTextItems || [])) {
+            if (!it.str || !it.str.trim() || !it.transform) continue;
+            const t = util.transform(vp.transform, it.transform);
+            if (Math.abs(t[1]) > 0.2 * Math.abs(t[0])) continue; // dönük metni atla
+            const h = Math.abs(t[3]);
+            if (!h || h < 3) continue;
+            raw.push({ x: t[4], y: t[5], w: (it.width || 0) * vp.scale, h, str: it.str });
+          }
+          raw.sort((a, b) => a.y - b.y || a.x - b.x);
+
+          // 1) satırlar
+          const lines = [];
+          for (const r of raw) {
+            const last = lines[lines.length - 1];
+            if (last && Math.abs(r.y - last.y) <= 0.45 * Math.max(r.h, last.h)) last.items.push(r);
+            else lines.push({ y: r.y, items: [r] });
+          }
+          // 2) satırları, büyük boşluklarda (tablo hücresi / sütun) parçalara böl
+          const segs = [];
+          for (const ln of lines) {
+            ln.items.sort((a, b) => a.x - b.x);
+            let cur = null;
+            for (const it of ln.items) {
+              if (cur) {
+                const gap = it.x - cur.right;
+                if (gap > 1.0 * Math.max(it.h, cur.h)) { segs.push(cur); cur = null; }
+              }
+              if (!cur) {
+                cur = { left: it.x, right: it.x + it.w, y: ln.y, h: it.h, text: it.str, maxH: it.h };
+              } else {
+                const gap = it.x - cur.right;
+                const needSpace = gap > 0.15 * it.h && !/\s$/.test(cur.text) && !/^\s/.test(it.str);
+                cur.text += (needSpace ? ' ' : '') + it.str;
+                cur.right = it.x + it.w;
+                cur.maxH = Math.max(cur.maxH, it.h);
+                cur.h = Math.max(cur.h, it.h);
+              }
+            }
+            if (cur) segs.push(cur);
+          }
+          for (const sg of segs) {
+            sg.top = sg.y - sg.h * 0.92;
+            sg.bottom = sg.y + sg.h * 0.25;
+            sg.text = sg.text.replace(/\s+/g, ' ').trim();
+          }
+          segs.sort((a, b) => a.top - b.top || a.left - b.left);
+
+          // 3) paragraf bloklarına birleştir (hizalı, dolu satırların devamı)
+          const blocks = [];
+          for (const sg of segs) {
+            let best = null, bestGap = Infinity;
+            for (const b of blocks) {
+              const L = b.last;
+              const vgap = sg.top - L.bottom;
+              const lWidth = L.right - L.left;
+              if (vgap < -0.5 * sg.h || vgap > 0.9 * sg.h) continue;
+              if (Math.abs(sg.left - b.left) > 2.2 * sg.h) continue;
+              if (Math.abs(sg.h - L.h) > 0.25 * L.h) continue;
+              if (lWidth < 0.28 * vp.width) continue;
+              if (!(sg.left < L.right && sg.right > L.left)) continue;
+              if (vgap < bestGap) { best = b; bestGap = vgap; }
+            }
+            if (best) {
+              best.segs.push(sg);
+              best.last = sg;
+              best.left = Math.min(best.left, sg.left);
+              best.right = Math.max(best.right, sg.right);
+              best.bottom = Math.max(best.bottom, sg.bottom);
+            } else {
+              blocks.push({ segs: [sg], last: sg, left: sg.left, right: sg.right, top: sg.top, bottom: sg.bottom });
+            }
+          }
+
+          // 4) metni birleştir (satır sonu tireleme), uygun olmayan blokları ele
+          const out = [];
+          for (const b of blocks) {
+            let text = '';
+            for (const sg of b.segs) {
+              if (!text) text = sg.text;
+              else if (/[A-Za-zÀ-ÿğüşıöçĞÜŞİÖÇ]-$/.test(text)) text = text.slice(0, -1) + sg.text;
+              else text += ' ' + sg.text;
+            }
+            text = text.replace(/\s+/g, ' ').trim();
+            const letters = (text.match(/\p{L}/gu) || []).length;
+            if (letters < 4 || letters / text.length < 0.55) continue;      // formül/sayı/simge ağırlıklı
+            if (/^(https?:|doi:|www\.)/i.test(text) || /^[\w.+-]+@[\w-]+\./.test(text)) continue;
+            const hs = b.segs.map(x => x.h);
+            b.h = hs.reduce((a, c) => a + c, 0) / hs.length;
+            b.text = text;
+            out.push(b);
+          }
+          return out;
+        }
+
+        function wrapCanvasLines(ctx, text, maxW) {
+          const words = text.split(' ');
+          const lines = [];
+          let cur = '';
+          for (const w of words) {
+            const test = cur ? cur + ' ' + w : w;
+            if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+            else cur = test;
+          }
+          if (cur) lines.push(cur);
+          return lines;
+        }
+
+        function sampleBackground(srcCtx, x, y, w, h) {
+          const W = srcCtx.canvas.width, H = srcCtx.canvas.height;
+          const pts = [[x + 1, y + 1], [x + w - 2, y + 1], [x + 1, y + h - 2], [x + w - 2, y + h - 2], [x + 1, y + h / 2], [x + w - 2, y + h / 2]];
+          const samples = [];
+          for (const [px, py] of pts) {
+            const cx = Math.max(0, Math.min(W - 1, Math.round(px)));
+            const cy = Math.max(0, Math.min(H - 1, Math.round(py)));
+            try {
+              const d = srcCtx.getImageData(cx, cy, 1, 1).data;
+              samples.push({ r: d[0], g: d[1], b: d[2], lum: 0.299 * d[0] + 0.587 * d[1] + 0.114 * d[2] });
+            } catch (e) {}
+          }
+          if (!samples.length) return { r: 255, g: 255, b: 255, lum: 255 };
+          samples.sort((a, b) => a.lum - b.lum);
+          return samples[Math.floor(samples.length / 2)];
+        }
+
+        function drawTranslatedBlock(ovCtx, srcCtx, blk, tr, dpr) {
+          const pad = blk.h * 0.12;
+          const x = blk.left - pad;
+          const y = blk.top - pad * 0.5;
+          const w = (blk.right - blk.left) + pad * 2;
+          const hgt = (blk.bottom - blk.top) + pad;
+          const bg = sampleBackground(srcCtx, x, y, w, hgt);
+          ovCtx.fillStyle = `rgb(${bg.r},${bg.g},${bg.b})`;
+          ovCtx.fillRect(x, y, w, hgt);
+          ovCtx.fillStyle = bg.lum < 110 ? '#f8fafc' : '#111827';
+          ovCtx.textBaseline = 'top';
+          let fs = blk.h * 0.98;
+          const minFs = Math.max(5 * dpr, blk.h * 0.5);
+          let lines;
+          for (;;) {
+            ovCtx.font = `${fs}px Arial, "Helvetica Neue", sans-serif`;
+            lines = wrapCanvasLines(ovCtx, tr, w - pad * 2);
+            if (lines.length * fs * 1.17 <= hgt + blk.h * 0.35 || fs <= minFs) break;
+            fs *= 0.94;
+          }
+          let ty = y + pad * 0.4;
+          for (const ln of lines) {
+            ovCtx.fillText(ln, x + pad, ty);
+            ty += fs * 1.17;
+          }
+        }
+
+        async function applyPdfTranslateOverlay() {
+          const pv = State.pdfViewer;
+          const ov = document.getElementById('pdfTranslateOverlayCanvas');
+          const rc = document.getElementById('pdfRenderCanvas');
+          if (!ov || !rc) return;
+          ov.width = rc.width; ov.height = rc.height;
+          ov.style.width = rc.style.width; ov.style.height = rc.style.height;
+          const job = ++pdfOverlayJob;
+          if (!pv.translateOverlay || !pv.pdfDoc || pv.viewMode === 'stack') return;
+
+          const blocks = buildPdfTextBlocks(pv);
+          const statusMsg = document.getElementById('pdfViewerStatusMsg');
+          if (!blocks.length) {
+            showToast('Bu sayfada çevrilecek seçilebilir metin bulunamadı (taranmış/resim sayfası olabilir).', 'info');
+            return;
+          }
+          const ovCtx = ov.getContext('2d');
+          const srcCtx = rc.getContext('2d', { willReadFrequently: true });
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          let done = 0, failed = 0, idx = 0;
+          const total = blocks.length;
+          const setProg = () => { if (statusMsg) statusMsg.innerHTML = `<i class="fa-solid fa-language text-emerald-400 mr-1"></i>Türkçe katman: ${done}/${total} blok${failed ? ` (${failed} çevrilemedi)` : ''}`; };
+          setProg();
+
+          async function worker() {
+            while (idx < blocks.length) {
+              if (job !== pdfOverlayJob) return;
+              const b = blocks[idx++];
+              let tr = State.pdfTranslateCache.get(b.text);
+              if (tr == null) {
+                tr = await freeTranslateChunk(b.text.slice(0, 1500), 'tr');
+                if (tr) State.pdfTranslateCache.set(b.text, tr);
+              }
+              if (job !== pdfOverlayJob) return;
+              if (tr) drawTranslatedBlock(ovCtx, srcCtx, b, tr.trim(), dpr);
+              else failed++;
+              done++;
+              setProg();
+            }
+          }
+          await Promise.all(Array.from({ length: 5 }, worker));
+          if (job === pdfOverlayJob && failed > 0) {
+            showToast(`${failed} blok çevrilemedi (ücretsiz servis yoğun olabilir). Birkaç saniye sonra butona tekrar basıp deneyin.`, 'info');
+          }
+        }
+
+        document.getElementById('btnTogglePdfTranslate').addEventListener('click', () => {
+          const pv = State.pdfViewer;
+          if (!pv.pdfDoc) { showToast('Önce makalenin PDF\'i yüklenmeli (PDF Seç veya otomatik çekme).', 'info'); return; }
+          pv.translateOverlay = !pv.translateOverlay;
+          const btn = document.getElementById('btnTogglePdfTranslate');
+          document.getElementById('spanPdfTranslateText').textContent = pv.translateOverlay ? 'Orijinali Göster' : 'Türkçe Göster';
+          btn.className = pv.translateOverlay
+            ? 'tv-focusable px-2.5 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1 shadow'
+            : 'tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1 shadow';
+          if (pv.translateOverlay && pv.viewMode === 'stack') setPdfViewMode('single');
+          if (pv.translateOverlay) showToast('Sayfa Türkçeye çevriliyor; çeviri blok blok PDF üzerinde belirir.', 'info');
+          renderCurrentPdfPage();
+        });
 
         // Instant Lazy-Loaded All-Pages Stack Renderer (Renders placeholders in 0.1s and draws each page only as it scrolls into view!)
         function renderLazyStackPages() {
