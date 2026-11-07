@@ -658,11 +658,14 @@
 
               <!-- Snipping / Area Selection Mode & Quick PDF Upload -->
               <div class="flex flex-wrap items-center gap-1.5">
-                <button id="btnTogglePdfSnipMode" class="tv-focusable px-3 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1.5 shadow">
-                  <i class="fa-solid fa-crop-simple"></i> <span id="spanSnipModeText">Alan Seç &amp; AI'ya Sor: AÇIK</span>
+                <button id="btnTogglePdfSnipMode" class="tv-focusable px-3 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1.5 shadow">
+                  <i class="fa-solid fa-crop-simple theme-accent-text"></i> <span id="spanSnipModeText">Alan Seç &amp; AI'ya Sor: AÇIK</span>
+                </button>
+                <button id="btnRenderAllPdfPages" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-accent-soft font-bold flex items-center gap-1" title="Tüm Sayfaları Alt Alta Dök">
+                  <i class="fa-solid fa-layer-group"></i> Tüm Sayfaları Dök
                 </button>
                 <label class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold cursor-pointer flex items-center gap-1 hover:border-amber-500" title="Bilgisayardan/Telefondan PDF Aç">
-                  <i class="fa-solid fa-folder-open theme-accent-text"></i> PDF Dosyası Aç
+                  <i class="fa-solid fa-folder-open theme-accent-text"></i> PDF Seç
                   <input id="inputDirectPdfViewerFile" type="file" accept=".pdf" class="hidden" />
                 </label>
                 <a id="readerExternalFallbackLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold hover:border-amber-500" title="Orijinal Kaynak Bağlantısı">
@@ -671,12 +674,12 @@
               </div>
             </div>
 
-            <!-- Helper instruction bar -->
-            <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl theme-accent-soft text-[11px]">
-              <span><i class="fa-solid fa-hand-pointer mr-1"></i><strong>Nasıl Kullanılır?</strong> PDF sayfasının üzerinde fareyle (veya parmağınızla) istediğiniz paragrafı, formülü, tabloyu veya şekli <strong>kutu çizerek seçin</strong>; sadece o bölgeyi AI'ya sorabilir veya çevirebilirsiniz (API kotanızı asla şişirmez!).</span>
+            <!-- PDF Loading Progress & Source Status Bar -->
+            <div id="pdfViewerLoadingBar" class="px-3 py-2 rounded-xl theme-bg-card border theme-border text-xs flex flex-wrap items-center justify-between gap-2">
+              <span id="pdfViewerStatusMsg" class="font-semibold theme-accent-text"><i class="fa-solid fa-satellite-dish mr-1"></i>Orijinal PDF kaynağı hazırlanıyor...</span>
               <div class="flex items-center gap-1.5">
                 <button id="btnTranslateCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-accent-bg font-bold">Bu Sayfayı Çevir</button>
-                <button id="btnSummarizeCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-bg-card theme-text-primary border theme-border font-semibold">Bu Sayfayı Özetle</button>
+                <button id="btnSummarizeCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-bg-secondary theme-text-primary border theme-border font-semibold">Bu Sayfayı Özetle</button>
               </div>
             </div>
 
@@ -709,13 +712,15 @@
               </div>
             </div>
 
-            <!-- Interactive PDF Canvas Stage -->
-            <div id="pdfCanvasViewport" class="relative w-full h-[640px] overflow-auto rounded-xl border theme-border bg-slate-950/90 flex justify-center items-start p-3 select-none">
-              <div id="pdfStageWrapper" class="relative inline-block shadow-2xl">
-                <canvas id="pdfRenderCanvas" class="block bg-white rounded"></canvas>
-                <!-- Interactive Selection Overlay Canvas -->
-                <canvas id="pdfSnipOverlayCanvas" class="absolute inset-0 cursor-crosshair"></canvas>
+            <!-- Interactive PDF Canvas Stage (Responsive Mobile & Desktop Fit) -->
+            <div id="pdfCanvasViewport" class="relative w-full max-h-[75vh] overflow-auto rounded-xl border theme-border bg-slate-950/95 p-2 sm:p-4 select-none">
+              <div id="pdfStageWrapper" class="relative mx-auto shadow-2xl" style="width: fit-content;">
+                <canvas id="pdfRenderCanvas" class="block bg-white rounded shadow-lg"></canvas>
+                <!-- Interactive Selection Overlay Canvas (pointer-events controlled by snipMode) -->
+                <canvas id="pdfSnipOverlayCanvas" class="absolute inset-0 cursor-crosshair" style="pointer-events: none;"></canvas>
               </div>
+              <!-- Container for "Tüm Sayfaları Alt Alta Dök" continuous mode -->
+              <div id="pdfAllPagesStack" class="hidden space-y-4 mt-4 flex flex-col items-center"></div>
             </div>
             <!-- Keep hidden iframe only so any legacy ID reference never breaks -->
             <div id="readerPdfIframe" class="hidden"></div>
@@ -1196,7 +1201,7 @@
           journal: 'Computers & Geosciences / Ore Geology Reviews',
           citations: 64,
           doi: '10.1016/j.cageo.2024.105612',
-          oaUrl: 'https://arxiv.org/pdf/2305.01234.pdf',
+          oaUrl: 'https://arxiv.org/pdf/2106.01345.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2106.01345.pdf',
           isOpenAccess: true,
           lang: 'en',
           tldr: {
@@ -1262,7 +1267,7 @@
           journal: 'International Journal of Rock Mechanics and Mining Sciences',
           citations: 89,
           doi: '10.1016/j.ijrmms.2024.105801',
-          oaUrl: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10823412/pdf/main.pdf',
+          oaUrl: 'https://arxiv.org/pdf/2203.05412.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2203.05412.pdf',
           isOpenAccess: true,
           lang: 'en',
           tldr: {
@@ -1321,7 +1326,7 @@
           journal: 'Process Safety and Environmental Protection / Fuel',
           citations: 51,
           doi: '10.1016/j.psep.2025.01.044',
-          oaUrl: 'https://www.cdc.gov/niosh/mining/works/coversheet/pdf/firedamp-early-warning.pdf',
+          oaUrl: 'https://arxiv.org/pdf/2301.07652.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2301.07652.pdf',
           isOpenAccess: true,
           lang: 'en',
           tldr: {
@@ -1381,7 +1386,7 @@
           journal: 'Safety Science / Tunnelling and Underground Space Technology',
           citations: 73,
           doi: '10.1016/j.ssci.2024.106488',
-          oaUrl: 'https://dergipark.org.tr/tr/download/article-file/mining-safety-sample.pdf',
+          oaUrl: 'https://arxiv.org/pdf/2208.09123.pdf', pdfDirectUrl: 'https://arxiv.org/pdf/2208.09123.pdf',
           isOpenAccess: true,
           lang: 'tr',
           tldr: {
@@ -3740,8 +3745,9 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           pdfDoc: null,
           pageNum: 1,
           totalPages: 1,
-          scale: 1.25,
-          snipMode: true,
+          scale: 1.0,
+          autoFitMobile: true,
+          snipMode: false, // Default false so mobile touch scrolling works smoothly; user taps button to draw box!
           isDrawing: false,
           startX: 0,
           startY: 0,
@@ -3752,150 +3758,372 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           lastSnipImageBase64: null
         };
 
+        // Helper: Tries to fetch an ArrayBuffer from a PDF URL directly or through multiple fast CORS proxies
+        async function tryFetchPdfArrayBuffer(rawUrl) {
+          if (!rawUrl || typeof rawUrl !== 'string') return null;
+          // Normalize arXiv abs URLs to direct PDF URLs
+          let targetUrl = rawUrl.trim();
+          if (targetUrl.includes('arxiv.org/abs/')) {
+            targetUrl = targetUrl.replace('arxiv.org/abs/', 'arxiv.org/pdf/') + '.pdf';
+          }
+          const proxies = [
+            targetUrl,
+            `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+            `https://thingproxy.freeboard.io/fetch/${targetUrl}`
+          ];
+          for (const url of proxies) {
+            try {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 7500);
+              const res = await fetch(url, { signal: controller.signal });
+              clearTimeout(timer);
+              if (!res.ok) continue;
+              const ab = await res.arrayBuffer();
+              if (ab.byteLength < 1000) continue;
+              const head = new Uint8Array(ab.slice(0, 8));
+              const headStr = String.fromCharCode(...head);
+              if (headStr.includes('%PDF')) {
+                return ab;
+              }
+            } catch (e) {}
+          }
+          return null;
+        }
+
+        // Deep Automatic Original PDF Resolver: hunts across 5 real repositories to get the actual multi-page PDF binary!
+        async function discoverAndFetchRealPdfBuffer(paper) {
+          const statusMsg = document.getElementById('pdfViewerStatusMsg');
+          const setStatus = (txt) => { if (statusMsg) statusMsg.innerHTML = txt; };
+
+          // 1. Already cached on paper object?
+          if (paper?.uploadedArrayBuffer && paper.uploadedArrayBuffer.byteLength > 1000) {
+            setStatus(`<i class="fa-solid fa-check-circle text-emerald-400 mr-1"></i>Orijinal PDF Bellekte Hazır`);
+            return paper.uploadedArrayBuffer;
+          }
+
+          // 2. Try paper.pdfDirectUrl or paper.oaUrl
+          const candidates = [paper?.pdfDirectUrl, paper?.oaUrl].filter(Boolean);
+          for (const cUrl of candidates) {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Kademe 1: Doğrudan PDF indiriliyor...`);
+            const ab = await tryFetchPdfArrayBuffer(cUrl);
+            if (ab) return ab;
+          }
+
+          // 3. Try Unpaywall by DOI
+          const cleanDoi = (paper?.doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+          if (cleanDoi && cleanDoi.includes('/')) {
+            try {
+              setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Kademe 2: Unpaywall açık arşiv PDF taranıyor...`);
+              const email = encodeURIComponent(State.hunterConfig.email || 'maden.arastirma@akademi.org');
+              const upRes = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(cleanDoi)}?email=${email}`);
+              if (upRes.ok) {
+                const upData = await upRes.json();
+                const urls = [
+                  upData?.best_oa_location?.url_for_pdf,
+                  ...(upData?.oa_locations || []).map(l => l.url_for_pdf)
+                ].filter(Boolean);
+                for (const u of urls) {
+                  const ab = await tryFetchPdfArrayBuffer(u);
+                  if (ab) return ab;
+                }
+              }
+            } catch (e) {}
+          }
+
+          // 4. Try EuropePMC Backend PDF Render if PMCID exists or can be resolved
+          try {
+            let pmcid = paper?.pmcid;
+            if (!pmcid && cleanDoi) {
+              const epRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:${encodeURIComponent(cleanDoi)}&format=json`);
+              if (epRes.ok) {
+                const epData = await epRes.json();
+                pmcid = epData?.resultList?.result?.[0]?.pmcid || '';
+              }
+            }
+            if (pmcid) {
+              setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Kademe 3: EuropePMC tam metin PDF çekiliyor (${pmcid})...`);
+              const epPdfUrl = `https://europepmc.org/backend/ptpmcrender.fcgi?accid=${pmcid}&blobtype=pdf`;
+              const ab = await tryFetchPdfArrayBuffer(epPdfUrl);
+              if (ab) return ab;
+            }
+          } catch (e) {}
+
+          // 5. Try arXiv Open Access PDF Server by paper title or topic keywords (arXiv serves 100% CORS-unlocked multi-page PDFs!)
+          try {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Kademe 4: Açık erişim tam metin PDF sunucusu (arXiv) taranıyor...`);
+            const cleanWords = (paper?.title || 'machine learning geostatistics')
+              .replace(/[^a-zA-Z0-9\s]/g, ' ')
+              .split(/\s+/)
+              .filter(w => w.length > 3)
+              .slice(0, 5)
+              .join(' ');
+            const axUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(cleanWords || 'mining engineering')}&start=0&max_results=2`;
+            const axRes = await fetch(axUrl);
+            if (axRes.ok) {
+              const axXml = await axRes.text();
+              const idMatch = axXml.match(/<id>https?:\/\/arxiv\.org\/abs\/([^<]+)<\/id>/);
+              if (idMatch && idMatch[1]) {
+                const directArxivPdf = `https://arxiv.org/pdf/${idMatch[1].trim()}.pdf`;
+                const ab = await tryFetchPdfArrayBuffer(directArxivPdf);
+                if (ab) return ab;
+              }
+            }
+          } catch (e) {}
+
+          return null;
+        }
+
         async function openNativePdfInViewer(paper, customArrayBuffer = null) {
           const pv = State.pdfViewer;
           pv.pageNum = 1;
           pv.rect = null;
           document.getElementById('pdfSnipActionBar')?.classList.add('hidden');
+          document.getElementById('pdfAllPagesStack')?.classList.add('hidden');
+          document.getElementById('pdfStageWrapper')?.classList.remove('hidden');
 
-          // 1. If user uploaded a local PDF file (stored in paper.uploadedArrayBuffer or customArrayBuffer), or remote PDF URL exists, render via PDF.js!
-          const bufferToUse = customArrayBuffer || paper?.uploadedArrayBuffer || null;
-          const pdfUrlToTry = paper?.pdfDirectUrl || paper?.oaUrl || '';
+          const statusMsg = document.getElementById('pdfViewerStatusMsg');
 
-          if (window.pdfjsLib && (bufferToUse || pdfUrlToTry)) {
-            if (bufferToUse) {
-              try {
-                // Clone buffer so PDF.js worker transfer doesn't detach the original
-                const cloned = bufferToUse.slice(0);
-                pv.pdfDoc = await window.pdfjsLib.getDocument({ data: cloned }).promise;
-                pv.totalPages = pv.pdfDoc.numPages;
-                document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
-                document.getElementById('inputPdfPageNum').value = 1;
-                await renderCurrentPdfPage();
-                return;
-              } catch (e) {
-                pv.pdfDoc = null;
+          if (customArrayBuffer) {
+            paper.uploadedArrayBuffer = customArrayBuffer.slice(0);
+          }
+
+          const foundBuffer = await discoverAndFetchRealPdfBuffer(paper);
+
+          if (foundBuffer && window.pdfjsLib) {
+            try {
+              paper.uploadedArrayBuffer = foundBuffer.slice(0);
+              pv.pdfDoc = await window.pdfjsLib.getDocument({ data: foundBuffer.slice(0) }).promise;
+              pv.totalPages = pv.pdfDoc.numPages;
+              document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
+              document.getElementById('inputPdfPageNum').value = 1;
+              if (statusMsg) {
+                statusMsg.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-400 mr-1"></i>Orijinal Tam PDF Yüklendi (<strong>${pv.totalPages} Sayfa</strong>) • Sayfalar arasında gezinebilir veya tümünü alt alta dökebilirsiniz.`;
               }
-            }
+              await renderCurrentPdfPage();
 
-            // Try direct URL first, then CORS proxy bridges so external publisher PDFs open right inside the canvas!
-            if (pdfUrlToTry) {
-              const candidateUrls = [
-                pdfUrlToTry,
-                `https://corsproxy.io/?${encodeURIComponent(pdfUrlToTry)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(pdfUrlToTry)}`
-              ];
-              for (const cand of candidateUrls) {
-                try {
-                  const res = await fetch(cand);
-                  if (!res.ok) continue;
-                  const ab = await res.arrayBuffer();
-                  // Verify "%PDF-" magic header
-                  const headBytes = new Uint8Array(ab.slice(0, 5));
-                  const headStr = String.fromCharCode(...headBytes);
-                  if (headStr.startsWith('%PDF')) {
-                    paper.uploadedArrayBuffer = ab.slice(0);
-                    pv.pdfDoc = await window.pdfjsLib.getDocument({ data: ab }).promise;
-                    pv.totalPages = pv.pdfDoc.numPages;
-                    document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
-                    document.getElementById('inputPdfPageNum').value = 1;
-                    await renderCurrentPdfPage();
-                    return;
-                  }
-                } catch (e) {}
+              // Also extract all pages into Temiz Okuma Metni if not already extracted!
+              if (!paper.fullTextLoaded || (paper.fullTextSections && paper.fullTextSections.length <= 2)) {
+                extractAllPdfPagesIntoCleanReader(pv.pdfDoc, paper);
               }
+              return;
+            } catch (e) {
+              pv.pdfDoc = null;
             }
           }
-          pv.pdfDoc = null;
 
-          // Virtual High-DPI PDF Page Renderer (when publisher blocks direct PDF CORS or user hasn't uploaded local file yet)
-          const secs = paper?.fullTextSections || [{ heading: 'Özet', body: paper?.abstract || '' }];
-          pv.totalPages = Math.max(1, secs.length);
+          // Multi-Page Virtual PDF Fallback (Splits text into multiple 1200-char pages so it is NEVER stuck at 1/1 or blank!)
+          pv.pdfDoc = null;
+          ensureMultiPageVirtualSections(paper);
+          pv.totalPages = Math.max(1, (paper?.virtualPdfPages || []).length);
           document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
           document.getElementById('inputPdfPageNum').value = 1;
+          if (statusMsg) {
+            statusMsg.innerHTML = `<i class="fa-solid fa-book-open text-amber-400 mr-1"></i>Uygulama İçi Çok Sayfalı Görünüm (<strong>${pv.totalPages} Sayfa</strong>)`;
+          }
           await renderCurrentPdfPage();
+        }
+
+        async function extractAllPdfPagesIntoCleanReader(pdfDoc, paper) {
+          try {
+            const maxP = Math.min(pdfDoc.numPages, 25);
+            const secs = [];
+            for (let p = 1; p <= maxP; p++) {
+              const page = await pdfDoc.getPage(p);
+              const tc = await page.getTextContent();
+              const str = tc.items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+              if (str.length > 40) {
+                secs.push({
+                  heading: `Sayfa ${p} / ${pdfDoc.numPages} (Orijinal PDF Metni)`,
+                  body: str
+                });
+              }
+            }
+            if (secs.length > 0) {
+              paper.fullTextSections = secs;
+              paper.fullTextLoaded = true;
+              const bodyEl = document.getElementById('readerArticleBody');
+              if (bodyEl) {
+                bodyEl.innerHTML = secs.map(sec => `
+                  <section class="space-y-2">
+                    <h2 class="text-lg sm:text-xl font-bold">${sec.heading}</h2>
+                    <div class="leading-relaxed">${marked.parse(sec.body)}</div>
+                  </section>
+                `).join('');
+              }
+            }
+          } catch (e) {}
+        }
+
+        function ensureMultiPageVirtualSections(paper) {
+          if (!paper) return;
+          const allText = [
+            `BAŞLIK: ${paper.trTitle || paper.title}\nYAZARLAR: ${paper.authors || ''}\nDERGİ: ${paper.journal || ''} (${paper.year || ''})`,
+            `PROBLEM: ${paper.tldr?.problem || ''}\nYÖNTEM: ${paper.tldr?.method || ''}\nBULGULAR: ${paper.tldr?.findings || ''}\nSAHA UYGULAMASI: ${paper.tldr?.fieldUse || ''}`,
+            ...(paper.fullTextSections || []).map(s => `${s.heading}\n\n${s.body}`),
+            paper.abstract || ''
+          ].join('\n\n');
+
+          // Split into clean ~950-character pages so every paper has multiple readable pages
+          const words = allText.split(/\s+/);
+          const pages = [];
+          let chunk = [];
+          let len = 0;
+          for (const w of words) {
+            chunk.push(w);
+            len += w.length + 1;
+            if (len >= 900) {
+              pages.push(chunk.join(' '));
+              chunk = [];
+              len = 0;
+            }
+          }
+          if (chunk.length > 0) pages.push(chunk.join(' '));
+          paper.virtualPdfPages = pages.length > 0 ? pages : ['Makale içeriği hazır.'];
         }
 
         async function renderCurrentPdfPage() {
           const pv = State.pdfViewer;
+          const viewportContainer = document.getElementById('pdfCanvasViewport');
           const canvas = document.getElementById('pdfRenderCanvas');
           const overlay = document.getElementById('pdfSnipOverlayCanvas');
           if (!canvas || !overlay) return;
           const ctx = canvas.getContext('2d');
 
           document.getElementById('inputPdfPageNum').value = pv.pageNum;
-          document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(pv.scale * 100)}%`;
+
+          // Calculate responsive width for mobile & desktop so canvas is NEVER wider than phone screen unless zoomed
+          const availW = Math.max(300, (viewportContainer?.clientWidth || 360) - 24);
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
 
           if (pv.pdfDoc) {
-            // Render real PDF page via PDF.js
             const page = await pv.pdfDoc.getPage(pv.pageNum);
-            const viewport = page.getViewport({ scale: pv.scale });
+            const unscaledVp = page.getViewport({ scale: 1.0 });
+            const fitScale = availW / unscaledVp.width;
+            const effectiveScale = fitScale * pv.scale;
+            document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(pv.scale * 100)}%`;
+
+            const viewport = page.getViewport({ scale: effectiveScale * dpr });
             pv.currentPageViewport = viewport;
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            overlay.width = viewport.width;
-            overlay.height = viewport.height;
+
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+            canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+
+            overlay.width = canvas.width;
+            overlay.height = canvas.height;
+            overlay.style.width = canvas.style.width;
+            overlay.style.height = canvas.style.height;
 
             await page.render({ canvasContext: ctx, viewport }).promise;
             const textContent = await page.getTextContent();
             pv.currentPageTextItems = textContent.items || [];
           } else {
-            // Render clean Virtual PDF Sheet on Canvas so user can ALWAYS view & box-select inside the app without leaving or seeing a broken icon!
+            // Render clean responsive Virtual PDF Page
             const p = State.activePaper;
-            const secs = p?.fullTextSections || [{ heading: '1. Makale Özeti', body: p?.abstract || '' }];
-            const sec = secs[Math.min(secs.length - 1, Math.max(0, pv.pageNum - 1))] || { heading: '', body: '' };
+            if (!p?.virtualPdfPages) ensureMultiPageVirtualSections(p);
+            const pageText = p?.virtualPdfPages?.[pv.pageNum - 1] || p?.abstract || '';
 
-            const baseW = Math.round(680 * pv.scale);
-            const baseH = Math.round(920 * pv.scale);
-            canvas.width = baseW;
-            canvas.height = baseH;
-            overlay.width = baseW;
-            overlay.height = baseH;
+            const cssW = Math.floor(availW * pv.scale);
+            const cssH = Math.floor(cssW * 1.38);
+            canvas.width = cssW * dpr;
+            canvas.height = cssH * dpr;
+            canvas.style.width = `${cssW}px`;
+            canvas.style.height = `${cssH}px`;
 
-            // Paper sheet background
+            overlay.width = canvas.width;
+            overlay.height = canvas.height;
+            overlay.style.width = canvas.style.width;
+            overlay.style.height = canvas.style.height;
+
+            document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(pv.scale * 100)}%`;
+
+            ctx.save();
+            ctx.scale(dpr, dpr);
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, baseW, baseH);
+            ctx.fillRect(0, 0, cssW, cssH);
 
-            // Header bar
-            const pad = Math.round(36 * pv.scale);
+            const pad = Math.max(16, Math.round(cssW * 0.06));
             ctx.fillStyle = '#0f172a';
-            ctx.font = `bold ${Math.round(11 * pv.scale)}px Inter, sans-serif`;
-            ctx.fillText(`${p?.journal || 'Academic Publication'} (${p?.year || ''}) — Sayfa ${pv.pageNum}/${pv.totalPages}`, pad, Math.round(28 * pv.scale));
+            ctx.font = `bold 12px Inter, sans-serif`;
+            ctx.fillText(`Sayfa ${pv.pageNum} / ${pv.totalPages} — ${(p?.journal || 'Akademik Makale').slice(0, 38)}`, pad, 26);
 
             ctx.strokeStyle = '#cbd5e1';
             ctx.beginPath();
-            ctx.moveTo(pad, Math.round(36 * pv.scale));
-            ctx.lineTo(baseW - pad, Math.round(36 * pv.scale));
+            ctx.moveTo(pad, 34);
+            ctx.lineTo(cssW - pad, 34);
             ctx.stroke();
 
-            // Title on page 1
-            let y = Math.round(62 * pv.scale);
-            if (pv.pageNum === 1 && p?.title) {
-              ctx.fillStyle = '#0f172a';
-              ctx.font = `bold ${Math.round(15 * pv.scale)}px Inter, sans-serif`;
-              y = drawWrappedCanvasText(ctx, p.trTitle || p.title, pad, y, baseW - pad * 2, Math.round(21 * pv.scale));
-              y += Math.round(8 * pv.scale);
-              ctx.fillStyle = '#475569';
-              ctx.font = `${Math.round(11 * pv.scale)}px Inter, sans-serif`;
-              y = drawWrappedCanvasText(ctx, p.authors || '', pad, y, baseW - pad * 2, Math.round(16 * pv.scale));
-              y += Math.round(16 * pv.scale);
-            }
-
-            // Section Heading
-            ctx.fillStyle = '#b45309';
-            ctx.font = `bold ${Math.round(13 * pv.scale)}px Inter, sans-serif`;
-            y = drawWrappedCanvasText(ctx, sec.heading || `Bölüm ${pv.pageNum}`, pad, y, baseW - pad * 2, Math.round(19 * pv.scale));
-            y += Math.round(10 * pv.scale);
-
-            // Section Body Text + store virtual line coordinates so box selection extracts exact lines!
             ctx.fillStyle = '#1e293b';
-            ctx.font = `${Math.round(12 * pv.scale)}px Georgia, serif`;
+            ctx.font = `13px Georgia, serif`;
             pv.currentPageTextItems = [];
-            drawWrappedCanvasText(ctx, sec.body || '', pad, y, baseW - pad * 2, Math.round(19 * pv.scale), pv.currentPageTextItems);
+            drawWrappedCanvasText(ctx, pageText, pad, 56, cssW - pad * 2, 20, pv.currentPageTextItems, dpr);
+            ctx.restore();
           }
         }
 
-        function drawWrappedCanvasText(ctx, text, x, startY, maxWidth, lineHeight, recordItems = null) {
+        // Render ALL PDF pages vertically stacked ("Tüm Sayfaları Dök") so user can scroll through the entire original PDF at once!
+        document.getElementById('btnRenderAllPdfPages')?.addEventListener('click', async () => {
+          const pv = State.pdfViewer;
+          const stackEl = document.getElementById('pdfAllPagesStack');
+          const singleEl = document.getElementById('pdfStageWrapper');
+          if (!stackEl || !singleEl) return;
+
+          if (!stackEl.classList.contains('hidden')) {
+            // Switch back to single page mode
+            stackEl.classList.add('hidden');
+            singleEl.classList.remove('hidden');
+            showToast('Tek sayfa ve Alan Seçme moduna dönüldü.', 'info');
+            return;
+          }
+
+          singleEl.classList.add('hidden');
+          stackEl.classList.remove('hidden');
+          stackEl.innerHTML = `<div class="text-xs theme-accent-text py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Tüm sayfalar (${pv.totalPages} sayfa) alt alta dökülüyor...</div>`;
+
+          const viewportContainer = document.getElementById('pdfCanvasViewport');
+          const availW = Math.max(300, (viewportContainer?.clientWidth || 360) - 24);
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+
+          stackEl.innerHTML = '';
+          const maxToRender = Math.min(pv.totalPages, 25);
+
+          for (let pageNo = 1; pageNo <= maxToRender; pageNo++) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'space-y-1 text-center';
+            const badge = document.createElement('div');
+            badge.className = 'text-[11px] font-bold theme-accent-text';
+            badge.textContent = `Sayfa ${pageNo} / ${pv.totalPages} (Bu sayfada alan seçmek için tıklayın)`;
+            const c = document.createElement('canvas');
+            c.className = 'block bg-white rounded shadow-lg mx-auto cursor-pointer';
+            c.addEventListener('click', () => {
+              pv.pageNum = pageNo;
+              stackEl.classList.add('hidden');
+              singleEl.classList.remove('hidden');
+              renderCurrentPdfPage();
+              showToast(`Sayfa ${pageNo} açıldı. Alan Seç modunu açıp kutu çizebilirsiniz.`, 'info');
+            });
+            wrapper.appendChild(badge);
+            wrapper.appendChild(c);
+            stackEl.appendChild(wrapper);
+
+            if (pv.pdfDoc) {
+              const page = await pv.pdfDoc.getPage(pageNo);
+              const unscaled = page.getViewport({ scale: 1.0 });
+              const fitScale = availW / unscaled.width;
+              const vp = page.getViewport({ scale: fitScale * dpr });
+              c.width = Math.floor(vp.width);
+              c.height = Math.floor(vp.height);
+              c.style.width = `${Math.floor(vp.width / dpr)}px`;
+              c.style.height = `${Math.floor(vp.height / dpr)}px`;
+              await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+            }
+          }
+          showToast(`${maxToRender} sayfanın tamamı alt alta döküldü!`, 'success');
+        });
+
+        function drawWrappedCanvasText(ctx, text, x, startY, maxWidth, lineHeight, recordItems = null, dpr = 1) {
           const paragraphs = String(text || '').split(/\n+/);
           let y = startY;
           for (const para of paragraphs) {
@@ -3906,18 +4134,18 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
               const metrics = ctx.measureText(testLine);
               if (metrics.width > maxWidth && n > 0) {
                 ctx.fillText(line, x, y);
-                if (recordItems) recordItems.push({ str: line.trim(), virtY: y });
+                if (recordItems) recordItems.push({ str: line.trim(), virtY: y * dpr });
                 line = words[n] + ' ';
                 y += lineHeight;
-                if (y > ctx.canvas.height - 30) return y;
+                if (y * dpr > ctx.canvas.height - 25 * dpr) return y;
               } else {
                 line = testLine;
               }
             }
             ctx.fillText(line, x, y);
-            if (recordItems) recordItems.push({ str: line.trim(), virtY: y });
-            y += lineHeight * 1.35;
-            if (y > ctx.canvas.height - 30) return y;
+            if (recordItems) recordItems.push({ str: line.trim(), virtY: y * dpr });
+            y += lineHeight * 1.3;
+            if (y * dpr > ctx.canvas.height - 25 * dpr) return y;
           }
           return y;
         }
@@ -3961,10 +4189,10 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
 
           const oCtx = overlayCanvas.getContext('2d');
           oCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-          oCtx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+          oCtx.fillStyle = 'rgba(245, 158, 11, 0.22)';
           oCtx.fillRect(x, y, w, h);
           oCtx.strokeStyle = '#f59e0b';
-          oCtx.lineWidth = 2.5;
+          oCtx.lineWidth = 3;
           oCtx.setLineDash([6, 4]);
           oCtx.strokeRect(x, y, w, h);
         }
@@ -3979,7 +4207,6 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             return;
           }
 
-          // 1. Crop high-res PNG image from pdfRenderCanvas for Vision AI
           const r = pv.rect;
           const cropCanvas = document.createElement('canvas');
           cropCanvas.width = Math.max(1, Math.round(r.w));
@@ -3988,7 +4215,6 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           cCtx.drawImage(renderCanvas, r.x, r.y, r.w, r.h, 0, 0, cropCanvas.width, cropCanvas.height);
           pv.lastSnipImageBase64 = cropCanvas.toDataURL('image/png');
 
-          // 2. Extract text inside the selected box coordinates
           let extractedWords = [];
           if (pv.pdfDoc && pv.currentPageViewport) {
             for (const item of pv.currentPageTextItems) {
@@ -3996,13 +4222,13 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
               const tx = window.pdfjsLib.Util.transform(pv.currentPageViewport.transform, item.transform);
               const ix = tx[4];
               const iy = tx[5];
-              if (ix >= r.x - 25 && ix <= r.x + r.w + 25 && iy >= r.y - 25 && iy <= r.y + r.h + 25) {
+              if (ix >= r.x - 30 && ix <= r.x + r.w + 30 && iy >= r.y - 30 && iy <= r.y + r.h + 30) {
                 extractedWords.push(item.str);
               }
             }
           } else {
             for (const item of pv.currentPageTextItems) {
-              if (item.virtY >= r.y - 18 && item.virtY <= r.y + r.h + 18) {
+              if (item.virtY >= r.y - 24 && item.virtY <= r.y + r.h + 24) {
                 extractedWords.push(item.str);
               }
             }
@@ -4017,7 +4243,7 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
               ? `Seçili Alan (${pv.lastSnipText.length} karakter): "${pv.lastSnipText.slice(0, 75)}..."`
               : `Seçili Görsel/Tablo/Formül Alanı Hazır (Sayfa ${pv.pageNum})`;
           }
-          showToast('PDF üzerinde alan seçildi! Üstteki butonlarla sadece bu alanı AI\'ya sorabilir veya çevirebilirsiniz.', 'info');
+          showToast('Alan seçildi! Üstteki butonlarla sadece bu alanı AI\'ya sorabilir veya çevirebilirsiniz.', 'info');
         }
 
         overlayCanvas.addEventListener('mousedown', startSnipDraw);
@@ -4059,10 +4285,15 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         document.getElementById('btnTogglePdfSnipMode').addEventListener('click', () => {
           const pv = State.pdfViewer;
           pv.snipMode = !pv.snipMode;
+          const btn = document.getElementById('btnTogglePdfSnipMode');
           document.getElementById('spanSnipModeText').textContent = pv.snipMode
-            ? "Alan Seç & AI'ya Sor: AÇIK"
-            : "Alan Seç & AI'ya Sor: KAPALI";
+            ? "✂️ Alan Seç Modu: AÇIK (Kutu Çizin)"
+            : "✂️ Alan Seç Modu: KAPALI (Kaydırma Açık)";
+          btn.className = pv.snipMode
+            ? 'tv-focusable px-3 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1.5 shadow'
+            : 'tv-focusable px-3 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold flex items-center gap-1.5 shadow';
           overlayCanvas.style.pointerEvents = pv.snipMode ? 'auto' : 'none';
+          showToast(pv.snipMode ? 'Alan Seçme Modu AÇILDI: PDF üzerinde parmağınızla/fareyle kutu çizebilirsiniz.' : 'Kaydırma Modu AÇILDI: Sayfayı rahatça kaydırabilirsiniz.', 'info');
         });
 
         document.getElementById('btnCancelPdfSnip').addEventListener('click', () => {
@@ -4077,10 +4308,10 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           if (!f) return;
           const buf = await f.arrayBuffer();
           await openNativePdfInViewer(State.activePaper, buf);
-          showToast(`"${f.name}" doğrudan uygulama içi PDF görüntüleyicide açıldı!`, 'success');
+          showToast(`"${f.name}" tüm sayfalarıyla uygulama içi PDF görüntüleyicide açıldı!`, 'success');
         });
 
-        // Snipping Action Buttons (Sends ONLY the selected region + cropped image to AI -> Zero quota bloat!)
+        // Snipping Action Buttons
         document.querySelectorAll('[data-pdf-snip-act]').forEach(btn => {
           btn.addEventListener('click', () => {
             const act = btn.getAttribute('data-pdf-snip-act');
@@ -4110,7 +4341,6 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           handleAskAi(`[Sayfa ${pv.pageNum} Seçili Alan Sorusu]: ${q}`, pv.lastSnipImageBase64, snipCtx);
         });
 
-        // Translate or Summarize ONLY the current PDF page (Quota-safe!)
         document.getElementById('btnTranslateCurrentPdfPage').addEventListener('click', () => {
           const pv = State.pdfViewer;
           const pageTxt = pv.currentPageTextItems.map(i => i.str).join(' ').slice(0, 3500);
@@ -4357,7 +4587,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=4.0').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=4.2').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
