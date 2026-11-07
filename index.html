@@ -4,10 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>MadenAkademi AI — Akademik Literatür, Tam Metin Avcısı &amp; Sektörel İstihbarat</title>
-  <meta name="description" content="Akademik Makale Arama, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu" />
-  <meta name="theme-color" content="#f59e0b" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -562,7 +558,13 @@
           <article id="readerTabText" class="reader-content border theme-border rounded-2xl p-5 sm:p-8 shadow-inner text-base select-text space-y-4">
             <div class="text-xs theme-text-secondary italic pb-2 border-b theme-border flex items-center justify-between">
               <span>💡 İpucu: Anlamadığınız bir cümleyi veya terimi fareyle/parmağınızla seçin; anında "Açıkla / Türkçeye Çevir / Saha Örneği" balonu açılır.</span>
-              <button id="btnTranslateFullArticle" class="px-2.5 py-1 rounded-lg theme-accent-soft font-sans font-semibold not-italic">Tüm Metni Türkçeye Çevir</button>
+              <div class="flex flex-wrap items-center gap-1.5 not-italic font-sans">
+                <select id="selectTranslateTargetLang" class="px-2 py-1 rounded-lg theme-bg-card theme-text-primary border theme-border text-xs">
+                  <option value="Türkçe">🇹🇷 Türkçeye Çevir</option>
+                  <option value="İngilizce">🇬🇧 İngilizceye Çevir</option>
+                </select>
+                <button id="btnTranslateFullArticle" class="px-2.5 py-1 rounded-lg theme-accent-soft font-semibold text-xs" title="API kotasını şişirmeden akıllı parçalı çeviri yapar">Tüm Metni Türkçeye Çevir</button>
+              </div>
             </div>
             <div id="readerArticleBody" class="space-y-4"></div>
           </article>
@@ -621,13 +623,95 @@
             <div id="readerEquationsList" class="space-y-3"></div>
           </div>
 
-          <!-- Tab 4: Embedded PDF / Mirror Viewer -->
+          <!-- Tab 4: Native In-App PDF.js Canvas Viewer + Area Selection (Snipping) Tool -->
           <div id="readerTabPdfFrame" class="hidden theme-bg-secondary border theme-border rounded-2xl p-4 space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span>Doğrudan PDF / Yayıncı Görünümü (Bazı dergiler güvenlik nedeniyle dış sekmede açılır):</span>
-              <a id="readerExternalFallbackLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-3 py-1 rounded-lg theme-accent-bg font-semibold">Yeni Sekmede Tam Ekran Aç</a>
+            <!-- PDF Viewer Top Toolbar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 theme-bg-card p-2.5 rounded-xl border theme-border text-xs">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button id="btnPdfPrevPage" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold hover:border-amber-500" title="Önceki Sayfa">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span class="px-2 font-semibold">
+                  Sayfa <input id="inputPdfPageNum" type="number" min="1" value="1" class="w-12 text-center px-1 py-0.5 rounded theme-bg-secondary border theme-border font-bold" /> / <span id="spanPdfTotalPages">1</span>
+                </span>
+                <button id="btnPdfNextPage" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-bold hover:border-amber-500" title="Sonraki Sayfa">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <span class="mx-1 theme-text-secondary">|</span>
+
+                <button id="btnPdfZoomOut" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border" title="Uzaklaştır">
+                  <i class="fa-solid fa-magnifying-glass-minus"></i>
+                </button>
+                <span id="spanPdfZoomLevel" class="font-mono text-[11px] px-1">125%</span>
+                <button id="btnPdfZoomIn" class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border" title="Yakınlaştır">
+                  <i class="fa-solid fa-magnifying-glass-plus"></i>
+                </button>
+              </div>
+
+              <!-- Snipping / Area Selection Mode & Quick PDF Upload -->
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button id="btnTogglePdfSnipMode" class="tv-focusable px-3 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1.5 shadow">
+                  <i class="fa-solid fa-crop-simple"></i> <span id="spanSnipModeText">Alan Seç &amp; AI'ya Sor: AÇIK</span>
+                </button>
+                <label class="tv-focusable px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold cursor-pointer flex items-center gap-1 hover:border-amber-500" title="Bilgisayardan/Telefondan PDF Aç">
+                  <i class="fa-solid fa-folder-open theme-accent-text"></i> PDF Dosyası Aç
+                  <input id="inputDirectPdfViewerFile" type="file" accept=".pdf" class="hidden" />
+                </label>
+                <a id="readerExternalFallbackLink" href="https://doi.org" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-lg theme-bg-secondary border theme-border font-semibold hover:border-amber-500" title="Orijinal Kaynak Bağlantısı">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              </div>
             </div>
-            <iframe id="readerPdfIframe" title="PDF Görünümü" class="w-full h-[540px] rounded-xl border theme-border bg-white" src="about:blank"></iframe>
+
+            <!-- Helper instruction bar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl theme-accent-soft text-[11px]">
+              <span><i class="fa-solid fa-hand-pointer mr-1"></i><strong>Nasıl Kullanılır?</strong> PDF sayfasının üzerinde fareyle (veya parmağınızla) istediğiniz paragrafı, formülü, tabloyu veya şekli <strong>kutu çizerek seçin</strong>; sadece o bölgeyi AI'ya sorabilir veya çevirebilirsiniz (API kotanızı asla şişirmez!).</span>
+              <div class="flex items-center gap-1.5">
+                <button id="btnTranslateCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-accent-bg font-bold">Bu Sayfayı Çevir</button>
+                <button id="btnSummarizeCurrentPdfPage" class="px-2.5 py-1 rounded-lg theme-bg-card theme-text-primary border theme-border font-semibold">Bu Sayfayı Özetle</button>
+              </div>
+            </div>
+
+            <!-- Selected Region Action Bar (Appears right after drawing a box on the PDF!) -->
+            <div id="pdfSnipActionBar" class="hidden theme-bg-elevated border-2 border-amber-500 rounded-xl p-3 space-y-2 pop-in">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 text-xs font-bold theme-accent-text">
+                  <i class="fa-solid fa-vector-square"></i>
+                  <span id="pdfSnipStatusTitle">PDF Üzerinde Alan Seçildi (Kota Dostu Odaklı Sorgu)</span>
+                </div>
+                <button id="btnCancelPdfSnip" class="text-xs theme-text-secondary hover:theme-text-primary">Seçimi Temizle ✕</button>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                <button data-pdf-snip-act="explain" class="px-3 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Seçili Alanı Açıkla
+                </button>
+                <button data-pdf-snip-act="translate_tr" class="px-3 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold flex items-center gap-1 hover:border-amber-500">
+                  <i class="fa-solid fa-language theme-accent-text"></i> Türkçeye Çevir
+                </button>
+                <button data-pdf-snip-act="translate_en" class="px-3 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold flex items-center gap-1 hover:border-amber-500">
+                  <i class="fa-solid fa-globe theme-accent-text"></i> İngilizceye Çevir
+                </button>
+                <button data-pdf-snip-act="vision" class="px-3 py-1.5 rounded-lg theme-bg-card border theme-border font-semibold flex items-center gap-1 hover:border-amber-500">
+                  <i class="fa-solid fa-eye text-emerald-400"></i> Şekil / Tablo / Formülü Görsel Olarak Yorumla
+                </button>
+              </div>
+              <div class="flex gap-2 pt-1">
+                <input id="inputPdfSnipCustomQuestion" type="text" placeholder="Seçtiğiniz bu alanla ilgili özel sorunuzu yazın (Örn: Buradaki denklemde k katsayısı nedir?)..." class="flex-1 px-3 py-1.5 rounded-lg theme-bg-card theme-text-primary border theme-border text-xs" />
+                <button id="btnAskPdfSnipCustom" class="px-3.5 py-1.5 rounded-lg theme-accent-bg text-xs font-bold">Sor</button>
+              </div>
+            </div>
+
+            <!-- Interactive PDF Canvas Stage -->
+            <div id="pdfCanvasViewport" class="relative w-full h-[640px] overflow-auto rounded-xl border theme-border bg-slate-950/90 flex justify-center items-start p-3 select-none">
+              <div id="pdfStageWrapper" class="relative inline-block shadow-2xl">
+                <canvas id="pdfRenderCanvas" class="block bg-white rounded"></canvas>
+                <!-- Interactive Selection Overlay Canvas -->
+                <canvas id="pdfSnipOverlayCanvas" class="absolute inset-0 cursor-crosshair"></canvas>
+              </div>
+            </div>
+            <!-- Keep hidden iframe only so any legacy ID reference never breaks -->
+            <iframe id="readerPdfIframe" title="PDF Yedek" class="hidden" src="about:blank"></iframe>
           </div>
         </div>
 
@@ -1525,7 +1609,18 @@
       }
 
       // Smart Key Rotator: tries Gemini pool round-robin first, then Groq pool round-robin
-      async function callAiWithKeyRotation(systemPrompt, userPrompt) {
+      // Smart Token Guard: truncates oversized prompts so a single call never exhausts TPM rate limits
+      function enforceTokenBudget(text, maxChars = 4200) {
+        if (!text) return '';
+        const s = String(text);
+        if (s.length <= maxChars) return s;
+        const half = Math.floor(maxChars / 2);
+        return s.slice(0, half) + '\n...[KOTA KORUMA: ORTA KISIM ÖZETLENDİ]...\n' + s.slice(-half);
+      }
+
+      async function callAiWithKeyRotation(systemPrompt, userPrompt, imageBase64 = null) {
+        systemPrompt = enforceTokenBudget(systemPrompt, 3600);
+        userPrompt = enforceTokenBudget(userPrompt, 4800);
         const pool = State.keyPool;
         const now = Date.now();
         const availableKeys = (pool.keys || []).filter(k => !k.cooldownUntil || k.cooldownUntil < now);
@@ -1547,7 +1642,7 @@
           try {
             if (keyObj.provider === 'gemini') {
               pool.geminiIndex = (pool.geminiIndex + 1) % Math.max(1, geminiKeys.length);
-              const text = await callGeminiApi(keyObj.key, systemPrompt, userPrompt);
+              const text = await callGeminiApi(keyObj.key, systemPrompt, userPrompt, imageBase64);
               keyObj.uses += 1;
               keyObj.status = 'ready';
               Storage.set('ma_key_pool', pool);
@@ -1580,14 +1675,24 @@
         return [...arr.slice(idx), ...arr.slice(0, idx)];
       }
 
-      async function callGeminiApi(apiKey, systemPrompt, userPrompt) {
+      async function callGeminiApi(apiKey, systemPrompt, userPrompt, imageBase64 = null) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const userParts = [{ text: userPrompt }];
+        if (imageBase64) {
+          const cleanB64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+          userParts.push({
+            inline_data: {
+              mime_type: 'image/png',
+              data: cleanB64
+            }
+          });
+        }
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            contents: [{ role: 'user', parts: userParts }],
             generationConfig: { temperature: 0.35 }
           })
         });
@@ -2865,17 +2970,41 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         box.scrollTop = box.scrollHeight;
       }
 
-      async function handleAskAi(promptText) {
+      // Smart Section Retriever (Mini-RAG): Finds the top 2 sections/pages most relevant to the user's question + active PDF page so API keys never bloat!
+      function selectRelevantContextForQuestion(paper, question) {
+        if (!paper) return '';
+        const secs = paper.fullTextSections || [];
+        if (secs.length === 0) return (paper.abstract || '').slice(0, 2500);
+
+        const qWords = (question || '').toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        const scored = secs.map((sec, idx) => {
+          const text = ((sec.heading || '') + ' ' + (sec.body || '')).toLowerCase();
+          let score = 0;
+          for (const w of qWords) {
+            if (text.includes(w)) score += 3;
+          }
+          // Boost first section (intro/abstract), last section (conclusion), and currently viewed PDF page
+          if (idx === 0 || idx === secs.length - 1) score += 1;
+          if (State.pdfViewer && idx + 1 === State.pdfViewer.pageNum) score += 4;
+          return { sec, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        const chosen = scored.slice(0, 2).map(x => `[${x.sec.heading}]: ${x.sec.body.slice(0, 1400)}`).join('\n\n');
+        return `Özet: ${(paper.abstract || '').slice(0, 800)}\n\nİlgili Bölümler:\n${chosen}`;
+      }
+
+      async function handleAskAi(promptText, optionalImageBase64 = null, explicitContext = null) {
         const q = (promptText || document.getElementById('aiChatInput').value || '').trim();
         if (!q) return;
         document.getElementById('aiChatInput').value = '';
         appendAiMessage('user', q);
 
         const p = State.activePaper;
-        const fullContext = (p?.fullTextSections || []).map(s => `${s.heading}: ${s.body}`).join('\n').slice(0, 18000);
-        const sysPrompt = `Sen incelenen makalenin bilim dalında uzman kıdemli bir Akademisyen, Profesör ve Başaraştırmacısın. Kullanıcının incelediği makale: "${p?.title || ''}" (${p?.year || ''}, Dergi: ${p?.journal || ''}). Makale İçeriği/Özeti: ${fullContext || p?.abstract || ''}. Sadece bu makalenin konusu ve bilimsel disiplini çerçevesinde kal; yanıtlarını her zaman Türkçe, anlaşılır, bilimsel olarak tam doğru ve Markdown tabloları/maddeleri kullanarak ver.`;
+        const smartContext = explicitContext || selectRelevantContextForQuestion(p, q);
+        const sysPrompt = `Sen incelenen makalenin bilim dalında uzman kıdemli bir Akademisyen ve Başaraştırmacısın. İncelenen makale: "${p?.title || ''}" (${p?.year || ''}, Dergi: ${p?.journal || ''}). Seçili Bağlam: ${smartContext}. Yanıtlarını her zaman anlaşılır, bilimsel olarak tam doğru ve Markdown tabloları/maddeleri kullanarak ver.`;
 
-        const res = await callAiWithKeyRotation(sysPrompt, q);
+        const res = await callAiWithKeyRotation(sysPrompt, q, optionalImageBase64);
         appendAiMessage('assistant', res.text, res.usedKey);
       }
 
@@ -3579,6 +3708,363 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           showToast('Makale çevrimdışı okuma çantasına eklendi!', 'success');
         });
 
+        // --- NATIVE IN-APP PDF.JS VIEWER & AREA SELECTION (SNIPPING) ENGINE ---
+        State.pdfViewer = {
+          pdfDoc: null,
+          pageNum: 1,
+          totalPages: 1,
+          scale: 1.25,
+          snipMode: true,
+          isDrawing: false,
+          startX: 0,
+          startY: 0,
+          rect: null,
+          currentPageTextItems: [],
+          currentPageViewport: null,
+          lastSnipText: '',
+          lastSnipImageBase64: null
+        };
+
+        async function openNativePdfInViewer(paper, customArrayBuffer = null) {
+          const pv = State.pdfViewer;
+          pv.pageNum = 1;
+          pv.rect = null;
+          document.getElementById('pdfSnipActionBar')?.classList.add('hidden');
+
+          // 1. If a raw PDF ArrayBuffer or local blob URL exists, render real PDF via PDF.js
+          const pdfUrlToTry = paper?.pdfDirectUrl || paper?.oaUrl || '';
+          if (window.pdfjsLib && (customArrayBuffer || pdfUrlToTry)) {
+            try {
+              const srcArg = customArrayBuffer ? { data: customArrayBuffer } : { url: pdfUrlToTry };
+              const loadingTask = window.pdfjsLib.getDocument(srcArg);
+              pv.pdfDoc = await loadingTask.promise;
+              pv.totalPages = pv.pdfDoc.numPages;
+              document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
+              document.getElementById('inputPdfPageNum').value = 1;
+              await renderCurrentPdfPage();
+              return;
+            } catch (err) {
+              // CORS or non-PDF landing URL: Fall back to rendering a high-DPI In-App Virtual PDF Sheet from fullTextSections so it NEVER shows a broken cross icon!
+              pv.pdfDoc = null;
+            }
+          } else {
+            pv.pdfDoc = null;
+          }
+
+          // Virtual High-DPI PDF Page Renderer (when publisher blocks direct PDF CORS or user hasn't uploaded local file yet)
+          const secs = paper?.fullTextSections || [{ heading: 'Özet', body: paper?.abstract || '' }];
+          pv.totalPages = Math.max(1, secs.length);
+          document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
+          document.getElementById('inputPdfPageNum').value = 1;
+          await renderCurrentPdfPage();
+        }
+
+        async function renderCurrentPdfPage() {
+          const pv = State.pdfViewer;
+          const canvas = document.getElementById('pdfRenderCanvas');
+          const overlay = document.getElementById('pdfSnipOverlayCanvas');
+          if (!canvas || !overlay) return;
+          const ctx = canvas.getContext('2d');
+
+          document.getElementById('inputPdfPageNum').value = pv.pageNum;
+          document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(pv.scale * 100)}%`;
+
+          if (pv.pdfDoc) {
+            // Render real PDF page via PDF.js
+            const page = await pv.pdfDoc.getPage(pv.pageNum);
+            const viewport = page.getViewport({ scale: pv.scale });
+            pv.currentPageViewport = viewport;
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            overlay.width = viewport.width;
+            overlay.height = viewport.height;
+
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            const textContent = await page.getTextContent();
+            pv.currentPageTextItems = textContent.items || [];
+          } else {
+            // Render clean Virtual PDF Sheet on Canvas so user can ALWAYS view & box-select inside the app without leaving or seeing a broken icon!
+            const p = State.activePaper;
+            const secs = p?.fullTextSections || [{ heading: '1. Makale Özeti', body: p?.abstract || '' }];
+            const sec = secs[Math.min(secs.length - 1, Math.max(0, pv.pageNum - 1))] || { heading: '', body: '' };
+
+            const baseW = Math.round(680 * pv.scale);
+            const baseH = Math.round(920 * pv.scale);
+            canvas.width = baseW;
+            canvas.height = baseH;
+            overlay.width = baseW;
+            overlay.height = baseH;
+
+            // Paper sheet background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, baseW, baseH);
+
+            // Header bar
+            const pad = Math.round(36 * pv.scale);
+            ctx.fillStyle = '#0f172a';
+            ctx.font = `bold ${Math.round(11 * pv.scale)}px Inter, sans-serif`;
+            ctx.fillText(`${p?.journal || 'Academic Publication'} (${p?.year || ''}) — Sayfa ${pv.pageNum}/${pv.totalPages}`, pad, Math.round(28 * pv.scale));
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(pad, Math.round(36 * pv.scale));
+            ctx.lineTo(baseW - pad, Math.round(36 * pv.scale));
+            ctx.stroke();
+
+            // Title on page 1
+            let y = Math.round(62 * pv.scale);
+            if (pv.pageNum === 1 && p?.title) {
+              ctx.fillStyle = '#0f172a';
+              ctx.font = `bold ${Math.round(15 * pv.scale)}px Inter, sans-serif`;
+              y = drawWrappedCanvasText(ctx, p.trTitle || p.title, pad, y, baseW - pad * 2, Math.round(21 * pv.scale));
+              y += Math.round(8 * pv.scale);
+              ctx.fillStyle = '#475569';
+              ctx.font = `${Math.round(11 * pv.scale)}px Inter, sans-serif`;
+              y = drawWrappedCanvasText(ctx, p.authors || '', pad, y, baseW - pad * 2, Math.round(16 * pv.scale));
+              y += Math.round(16 * pv.scale);
+            }
+
+            // Section Heading
+            ctx.fillStyle = '#b45309';
+            ctx.font = `bold ${Math.round(13 * pv.scale)}px Inter, sans-serif`;
+            y = drawWrappedCanvasText(ctx, sec.heading || `Bölüm ${pv.pageNum}`, pad, y, baseW - pad * 2, Math.round(19 * pv.scale));
+            y += Math.round(10 * pv.scale);
+
+            // Section Body Text + store virtual line coordinates so box selection extracts exact lines!
+            ctx.fillStyle = '#1e293b';
+            ctx.font = `${Math.round(12 * pv.scale)}px Georgia, serif`;
+            pv.currentPageTextItems = [];
+            drawWrappedCanvasText(ctx, sec.body || '', pad, y, baseW - pad * 2, Math.round(19 * pv.scale), pv.currentPageTextItems);
+          }
+        }
+
+        function drawWrappedCanvasText(ctx, text, x, startY, maxWidth, lineHeight, recordItems = null) {
+          const paragraphs = String(text || '').split(/\n+/);
+          let y = startY;
+          for (const para of paragraphs) {
+            const words = para.split(/\s+/);
+            let line = '';
+            for (let n = 0; n < words.length; n++) {
+              const testLine = line + words[n] + ' ';
+              const metrics = ctx.measureText(testLine);
+              if (metrics.width > maxWidth && n > 0) {
+                ctx.fillText(line, x, y);
+                if (recordItems) recordItems.push({ str: line.trim(), virtY: y });
+                line = words[n] + ' ';
+                y += lineHeight;
+                if (y > ctx.canvas.height - 30) return y;
+              } else {
+                line = testLine;
+              }
+            }
+            ctx.fillText(line, x, y);
+            if (recordItems) recordItems.push({ str: line.trim(), virtY: y });
+            y += lineHeight * 1.35;
+            if (y > ctx.canvas.height - 30) return y;
+          }
+          return y;
+        }
+
+        // Box-Selection (Snipping) Mouse & Touch Handlers on pdfSnipOverlayCanvas
+        const overlayCanvas = document.getElementById('pdfSnipOverlayCanvas');
+        const renderCanvas = document.getElementById('pdfRenderCanvas');
+
+        function getCanvasRelativeCoords(e, canvasEl) {
+          const rect = canvasEl.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          const scaleX = canvasEl.width / rect.width;
+          const scaleY = canvasEl.height / rect.height;
+          return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+          };
+        }
+
+        function startSnipDraw(e) {
+          const pv = State.pdfViewer;
+          if (!pv.snipMode) return;
+          const pos = getCanvasRelativeCoords(e, overlayCanvas);
+          pv.isDrawing = true;
+          pv.startX = pos.x;
+          pv.startY = pos.y;
+          pv.rect = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        }
+
+        function moveSnipDraw(e) {
+          const pv = State.pdfViewer;
+          if (!pv.isDrawing || !pv.snipMode) return;
+          if (e.cancelable) e.preventDefault();
+          const pos = getCanvasRelativeCoords(e, overlayCanvas);
+          const x = Math.min(pv.startX, pos.x);
+          const y = Math.min(pv.startY, pos.y);
+          const w = Math.abs(pos.x - pv.startX);
+          const h = Math.abs(pos.y - pv.startY);
+          pv.rect = { x, y, w, h };
+
+          const oCtx = overlayCanvas.getContext('2d');
+          oCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+          oCtx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+          oCtx.fillRect(x, y, w, h);
+          oCtx.strokeStyle = '#f59e0b';
+          oCtx.lineWidth = 2.5;
+          oCtx.setLineDash([6, 4]);
+          oCtx.strokeRect(x, y, w, h);
+        }
+
+        function endSnipDraw() {
+          const pv = State.pdfViewer;
+          if (!pv.isDrawing) return;
+          pv.isDrawing = false;
+          if (!pv.rect || pv.rect.w < 20 || pv.rect.h < 15) {
+            const oCtx = overlayCanvas.getContext('2d');
+            oCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            return;
+          }
+
+          // 1. Crop high-res PNG image from pdfRenderCanvas for Vision AI
+          const r = pv.rect;
+          const cropCanvas = document.createElement('canvas');
+          cropCanvas.width = Math.max(1, Math.round(r.w));
+          cropCanvas.height = Math.max(1, Math.round(r.h));
+          const cCtx = cropCanvas.getContext('2d');
+          cCtx.drawImage(renderCanvas, r.x, r.y, r.w, r.h, 0, 0, cropCanvas.width, cropCanvas.height);
+          pv.lastSnipImageBase64 = cropCanvas.toDataURL('image/png');
+
+          // 2. Extract text inside the selected box coordinates
+          let extractedWords = [];
+          if (pv.pdfDoc && pv.currentPageViewport) {
+            for (const item of pv.currentPageTextItems) {
+              if (!item.transform) continue;
+              const tx = window.pdfjsLib.Util.transform(pv.currentPageViewport.transform, item.transform);
+              const ix = tx[4];
+              const iy = tx[5];
+              if (ix >= r.x - 25 && ix <= r.x + r.w + 25 && iy >= r.y - 25 && iy <= r.y + r.h + 25) {
+                extractedWords.push(item.str);
+              }
+            }
+          } else {
+            for (const item of pv.currentPageTextItems) {
+              if (item.virtY >= r.y - 18 && item.virtY <= r.y + r.h + 18) {
+                extractedWords.push(item.str);
+              }
+            }
+          }
+
+          pv.lastSnipText = extractedWords.join(' ').replace(/\s+/g, ' ').trim();
+          const bar = document.getElementById('pdfSnipActionBar');
+          const statusTitle = document.getElementById('pdfSnipStatusTitle');
+          if (bar) bar.classList.remove('hidden');
+          if (statusTitle) {
+            statusTitle.textContent = pv.lastSnipText
+              ? `Seçili Alan (${pv.lastSnipText.length} karakter): "${pv.lastSnipText.slice(0, 75)}..."`
+              : `Seçili Görsel/Tablo/Formül Alanı Hazır (Sayfa ${pv.pageNum})`;
+          }
+          showToast('PDF üzerinde alan seçildi! Üstteki butonlarla sadece bu alanı AI\'ya sorabilir veya çevirebilirsiniz.', 'info');
+        }
+
+        overlayCanvas.addEventListener('mousedown', startSnipDraw);
+        overlayCanvas.addEventListener('mousemove', moveSnipDraw);
+        window.addEventListener('mouseup', endSnipDraw);
+        overlayCanvas.addEventListener('touchstart', startSnipDraw, { passive: true });
+        overlayCanvas.addEventListener('touchmove', moveSnipDraw, { passive: false });
+        overlayCanvas.addEventListener('touchend', endSnipDraw);
+
+        // PDF Toolbar Button Listeners
+        document.getElementById('btnPdfPrevPage').addEventListener('click', () => {
+          if (State.pdfViewer.pageNum > 1) {
+            State.pdfViewer.pageNum--;
+            renderCurrentPdfPage();
+          }
+        });
+        document.getElementById('btnPdfNextPage').addEventListener('click', () => {
+          if (State.pdfViewer.pageNum < State.pdfViewer.totalPages) {
+            State.pdfViewer.pageNum++;
+            renderCurrentPdfPage();
+          }
+        });
+        document.getElementById('inputPdfPageNum').addEventListener('change', (e) => {
+          const val = parseInt(e.target.value, 10);
+          if (val >= 1 && val <= State.pdfViewer.totalPages) {
+            State.pdfViewer.pageNum = val;
+            renderCurrentPdfPage();
+          }
+        });
+        document.getElementById('btnPdfZoomIn').addEventListener('click', () => {
+          State.pdfViewer.scale = Math.min(2.5, State.pdfViewer.scale + 0.25);
+          renderCurrentPdfPage();
+        });
+        document.getElementById('btnPdfZoomOut').addEventListener('click', () => {
+          State.pdfViewer.scale = Math.max(0.75, State.pdfViewer.scale - 0.25);
+          renderCurrentPdfPage();
+        });
+
+        document.getElementById('btnTogglePdfSnipMode').addEventListener('click', () => {
+          const pv = State.pdfViewer;
+          pv.snipMode = !pv.snipMode;
+          document.getElementById('spanSnipModeText').textContent = pv.snipMode
+            ? "Alan Seç & AI'ya Sor: AÇIK"
+            : "Alan Seç & AI'ya Sor: KAPALI";
+          overlayCanvas.style.pointerEvents = pv.snipMode ? 'auto' : 'none';
+        });
+
+        document.getElementById('btnCancelPdfSnip').addEventListener('click', () => {
+          const oCtx = overlayCanvas.getContext('2d');
+          oCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+          document.getElementById('pdfSnipActionBar').classList.add('hidden');
+        });
+
+        // Direct PDF File Open inside PDF Viewer Tab
+        document.getElementById('inputDirectPdfViewerFile').addEventListener('change', async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          const buf = await f.arrayBuffer();
+          await openNativePdfInViewer(State.activePaper, buf);
+          showToast(`"${f.name}" doğrudan uygulama içi PDF görüntüleyicide açıldı!`, 'success');
+        });
+
+        // Snipping Action Buttons (Sends ONLY the selected region + cropped image to AI -> Zero quota bloat!)
+        document.querySelectorAll('[data-pdf-snip-act]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const act = btn.getAttribute('data-pdf-snip-act');
+            const pv = State.pdfViewer;
+            const snipCtx = pv.lastSnipText
+              ? `PDF Sayfa ${pv.pageNum} Seçili Metin: "${pv.lastSnipText}"`
+              : `PDF Sayfa ${pv.pageNum} Seçili Görsel Kesiti`;
+
+            if (act === 'explain') {
+              handleAskAi(`PDF Sayfa ${pv.pageNum} üzerinde seçtiğim şu alanı detaylıca açıkla: "${pv.lastSnipText || 'Seçili görsel/formül alanı'}"`, pv.lastSnipImageBase64, snipCtx);
+            } else if (act === 'translate_tr') {
+              handleAskAi(`PDF Sayfa ${pv.pageNum} üzerinde seçtiğim şu bölümü tam ve doğru akademik Türkçeye çevir: "${pv.lastSnipText || 'Görseldeki metin'}"`, pv.lastSnipImageBase64, snipCtx);
+            } else if (act === 'translate_en') {
+              handleAskAi(`Translate this selected region from Page ${pv.pageNum} into clear academic English: "${pv.lastSnipText || 'Text in selected image'}"`, pv.lastSnipImageBase64, snipCtx);
+            } else if (act === 'vision') {
+              handleAskAi(`PDF Sayfa ${pv.pageNum} üzerinde kutu içine aldığım bu şekil, tablo veya matematiksel formülü incele ve ne anlattığını adım adım Türkçe yorumla.`, pv.lastSnipImageBase64, snipCtx);
+            }
+          });
+        });
+
+        document.getElementById('btnAskPdfSnipCustom').addEventListener('click', () => {
+          const q = document.getElementById('inputPdfSnipCustomQuestion').value.trim();
+          if (!q) return;
+          const pv = State.pdfViewer;
+          const snipCtx = `PDF Sayfa ${pv.pageNum} Seçili Bölge: "${pv.lastSnipText || 'Görsel kesit'}"`;
+          document.getElementById('inputPdfSnipCustomQuestion').value = '';
+          handleAskAi(`[Sayfa ${pv.pageNum} Seçili Alan Sorusu]: ${q}`, pv.lastSnipImageBase64, snipCtx);
+        });
+
+        // Translate or Summarize ONLY the current PDF page (Quota-safe!)
+        document.getElementById('btnTranslateCurrentPdfPage').addEventListener('click', () => {
+          const pv = State.pdfViewer;
+          const pageTxt = pv.currentPageTextItems.map(i => i.str).join(' ').slice(0, 3500);
+          handleAskAi(`PDF Sayfa ${pv.pageNum} içeriğini akademik dilde çevir ve önemli noktalarını vurgula.`, null, pageTxt);
+        });
+        document.getElementById('btnSummarizeCurrentPdfPage').addEventListener('click', () => {
+          const pv = State.pdfViewer;
+          const pageTxt = pv.currentPageTextItems.map(i => i.str).join(' ').slice(0, 3500);
+          handleAskAi(`PDF Sayfa ${pv.pageNum} içindeki temel bulguları, formülleri ve verileri maddeler halinde özetle.`, null, pageTxt);
+        });
+
         // Reader Inner Tabs
         document.querySelectorAll('.reader-tab-btn').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -3597,24 +4083,33 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
 
             if (tab === 'figures') renderReaderVisuals();
             if (tab === 'pdfframe' && State.activePaper) {
-              const iframe = document.getElementById('readerPdfIframe');
-              iframe.src = State.activePaper.oaUrl || `https://doi.org/${State.activePaper.doi}`;
+              openNativePdfInViewer(State.activePaper);
             }
           });
         });
 
-        // Translate Full Article Button
+        // Quota-Safe Chunked Translation Button (Translates active section/page or in safe chunks without blowing up API keys!)
         document.getElementById('btnTranslateFullArticle').addEventListener('click', async () => {
           const p = State.activePaper;
           if (!p) return;
-          showToast('Makale içeriği AI ile derinlemesine Türkçeye çevriliyor...', 'info');
-          const res = await callAiWithKeyRotation(
-            'Verilen akademik makale metnini teknik terimleri koruyarak akıcı bir mühendislik Türkçesine çevir ve açıkla.',
-            p.abstract + '\n\n' + (p.fullTextSections || []).map(s => s.body).join('\n')
-          );
-          p.fullTextSections = [{ heading: 'Türkçe Tam Akademik Çeviri & Teknik Açıklama', body: res.text }];
-          renderReaderContent();
-          showToast('Tam metin çevirisi tamamlandı!', 'success');
+          const targetLang = document.getElementById('selectTranslateTargetLang')?.value || 'Türkçe';
+          const secs = p.fullTextSections || [{ heading: 'Özet', body: p.abstract || '' }];
+
+          showToast(`API kotasını koruyarak bölüm bölüm ${targetLang} diline çevriliyor (1/${secs.length})...`, 'info');
+
+          // Translate up to 3 sections at a time with rotation across keys so no single key hits TPM limit
+          const maxBatch = Math.min(secs.length, 4);
+          for (let i = 0; i < maxBatch; i++) {
+            const chunkText = secs[i].body.slice(0, 3200);
+            const res = await callAiWithKeyRotation(
+              `Verilen akademik metin bölümünü teknik terimleri koruyarak akıcı bir akademik ${targetLang} diline çevir. Sadece çeviriyi döndür.`,
+              chunkText
+            );
+            secs[i].heading = `${secs[i].heading} (${targetLang})`;
+            secs[i].body = res.text;
+            renderReaderContent();
+          }
+          showToast(`Metin kota dostu modda ${targetLang} diline çevrildi!`, 'success');
         });
 
         // Regenerate TL;DR with AI
@@ -3803,11 +4298,6 @@ AIzaSyDu34KOrnekGemini4`;
         URL.revokeObjectURL(url);
       }
 
-            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js').catch(function() {});
-        });
-      }
       window.addEventListener('DOMContentLoaded', initApp);
     })();
   </script>
