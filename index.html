@@ -4,15 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>MadenAkademi AI — Akademik Literatür, Tam Metin Avcısı &amp; Sektörel İstihbarat</title>
-  <meta name="description" content="Jeoistatistik, Tahkimat, Grizu ve İSG Akademik Makale, Tam Metin Avcısı ve Yapay Zeka İrdeleme Platformu" />
-  <meta name="theme-color" content="#f59e0b" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -408,13 +410,22 @@
             </div>
           </div>
 
+          <!-- AI Query Expansion Info Bar -->
+          <div id="aiQueryExpansionBar" class="hidden theme-bg-card border border-amber-500/40 rounded-xl px-3.5 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2 py-0.5 rounded theme-accent-soft font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>AI Sorgu Motoru</span>
+              <span id="aiExpandedQueryText" class="font-mono theme-text-primary"></span>
+            </div>
+            <span id="aiSearchSourcesSummary" class="theme-text-secondary text-[11px]"></span>
+          </div>
+
           <!-- Search Progress / Status Banner -->
           <div id="searchStatusBanner" class="hidden theme-bg-card border theme-border rounded-xl p-3.5 flex items-center justify-between">
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-circle-notch fa-spin theme-accent-text text-lg"></i>
               <div>
                 <div id="searchStatusTitle" class="text-sm font-semibold">Akademik veritabanları taranıyor...</div>
-                <div id="searchStatusSub" class="text-xs theme-text-secondary">OpenAlex, Semantic Scholar, CrossRef, EuropePMC ve DergiPark sorgulanıyor</div>
+                <div id="searchStatusSub" class="text-xs theme-text-secondary">AI Sorgu Çevirisi + OpenAlex + EuropePMC (Tam Metin) + Semantic Scholar + arXiv paralel sorgulanıyor</div>
               </div>
             </div>
           </div>
@@ -1579,30 +1590,134 @@
       }
 
       function generateLocalMiningExpertResponse(prompt, paper) {
-        const pTitle = paper ? (paper.trTitle || paper.title) : 'İncelenen Çalışma';
+        const pTitle = paper ? (paper.trTitle || paper.title) : 'İncelenen Bilimsel Çalışma';
         const tldr = paper?.tldr || {};
-        return `### 👷‍♂️ Maden Mühendisliği & Akademik İrdeleme (${pTitle})
+        const abs = paper?.abstract || '';
+        return `### 🔬 Akademik & Teknik İrdeleme: ${pTitle}
 
 **Sorgunuz:** *${prompt}*
 
-#### 1. Teknik Açıklama ve Metodolojik Bağlam
-Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeolojik ve operasyonel koşullarda kestirim doğruluğu'}** konusudur. Araştırmacılar **${tldr.method || 'sayısal modelleme ve saha sensör verisi entegrasyonu'}** kullanarak klasik yaklaşımların kısıtlarını aşmıştır.
+#### 1. Makale Bağlamında Doğrudan Değerlendirme
+${abs ? `Çalışmanın tam metin / özet bulgularına göre: *${abs.slice(0, 480)}...*` : ''}
 
-| Kriter / Parametre | Klasik Yaklaşım | Makaledeki Yeni Yöntem | Mühendislik Kazanımı |
-| :--- | :--- | :--- | :--- |
-| **Temel Yöntem** | Geleneksel Ampirik / Doğrusal | ${tldr.method ? tldr.method.slice(0, 45) + '...' : 'Hibrit Modelleme'} | Yüksek mekansal/zamansal çözünürlük |
-| **Bulgular & Doğruluk** | Yüksek varyans / Gecikmeli tepki | ${tldr.findings ? tldr.findings.slice(0, 45) + '...' : '%20+ hata azalımı'} | Güvenilir saha karar desteği |
-| **Saha Uygulaması** | Manuel kontrol | ${tldr.fieldUse ? tldr.fieldUse.slice(0, 45) + '...' : 'Gerçek zamanlı optimizasyon'} | İSG ve üretim verimliliği artışı |
+* **Araştırma Problemi:** ${tldr.problem || paper?.title || 'İncelenen konudaki metodolojik ve uygulamalı darboğazların çözümü.'}
+* **Yöntem & Yaklaşım:** ${tldr.method || 'Veri odaklı analitik modelleme, deneysel doğrulama ve karşılaştırmalı performans testi.'}
+* **Temel Bulgular:** ${tldr.findings || 'Önerilen yaklaşımın geleneksel yöntemlere kıyasla doğruluk ve verimlilik artışı sağladığı gösterilmiştir.'}
 
-#### 2. Saha Uygulaması İçin Pratik Öneri
-* **Adım 1 (Veri Doğrulama):** Sondaj, sensör veya ayak basıncı verilerindeki uç değerlerin (outlier) filtrelenmesi.
-* **Adım 2 (Kalibrasyon):** Ocak veya cevher yatağının yerel jeoteknik/jeoistatistiksel parametrelerine göre modelin kalibre edilmesi.
-* **Adım 3 (İSG Entegrasyonu):** Erken uyarı ve karar eşiklerinin vardiya nezaretçisi ekranlarına doğrudan aktarılması.
+| Değerlendirme Boyutu | Makaledeki Yaklaşım | Pratik Uygulama Çıktısı |
+| :--- | :--- | :--- |
+| **Metodoloji** | ${tldr.method ? tldr.method.slice(0, 65) : 'Analitik & Deneysel Model'} | Yüksek tekrarlanabilirlik ve ölçeklenebilirlik |
+| **Temel Bulgu** | ${tldr.findings ? tldr.findings.slice(0, 65) : 'İstatistiksel olarak anlamlı iyileşme'} | Karar destek süreçlerinde doğrudan kullanım |
+| **Uygulama Alanı** | ${tldr.fieldUse ? tldr.fieldUse.slice(0, 65) : 'Saha ve laboratuvar entegrasyonu'} | Operasyonel risk ve maliyet azaltımı |
 
-*(Not: Kendi Gemini ve Groq anahtarlarınızı Ayarlar sekmesinden eklediğinizde bu analiz doğrudan canlı API havuzunuz üzerinden üretilir.)*`;
+*(💡 İpucu: Ayarlar & Key sekmesinden Gemini veya Groq API anahtarlarınızı eklediğinizde, bu analiz doğrudan canlı yapay zeka modelleri tarafından makalenin tüm bölümleri üzerinden üretilir.)*`;
       }
 
-      // --- 9. ACADEMIC & NEWS LIVE SEARCH ENGINE (OpenAlex + CrossRef + Google News RSS) ---
+      // --- 9. AI-POWERED GLOBAL & MULTI-SOURCE ACADEMIC + NEWS SEARCH ENGINE ---
+      const TR_ACADEMIC_DICT = {
+        'jeoistatistik': 'geostatistics',
+        'tenör': 'ore grade',
+        'tahmini': 'estimation',
+        'tahmin': 'prediction estimation',
+        'yeraltı': 'underground',
+        'kömür': 'coal',
+        'madenciliği': 'mining',
+        'madencilik': 'mining',
+        'maden': 'mine mining',
+        'tahkimat': 'roof support shield rock bolt',
+        'grizu': 'firedamp methane explosion coal mine',
+        'havalandırma': 'ventilation',
+        'iş güvenliği': 'occupational health and safety risk assessment',
+        'isg': 'occupational safety risk',
+        'kaya mekaniği': 'rock mechanics geotechnical',
+        'şev': 'slope stability',
+        'patlatma': 'blasting fragmentation',
+        'flotasyon': 'flotation mineral processing',
+        'cevher': 'ore mineral',
+        'yapay zeka': 'artificial intelligence machine learning',
+        'derin öğrenme': 'deep learning neural network',
+        'kanser': 'cancer oncology therapy',
+        'diyabet': 'diabetes insulin clinical',
+        'deprem': 'earthquake seismic fault',
+        'batarya': 'battery lithium energy storage',
+        'güneş enerjisi': 'solar energy photovoltaic',
+        'iklim': 'climate change global warming',
+        'ekonomi': 'economics inflation macroeconomic',
+        'psikoloji': 'psychology cognitive behavioral',
+        'hukuk': 'law legal regulation',
+        'tarım': 'agriculture crop soil',
+        'kalp': 'cardiology heart disease',
+        'beyin': 'neuroscience brain'
+      };
+
+      function buildFallbackEnglishQuery(rawQuery) {
+        const q = rawQuery.toLowerCase();
+        const translatedParts = [];
+        for (const [tr, en] of Object.entries(TR_ACADEMIC_DICT)) {
+          if (q.includes(tr)) translatedParts.push(en);
+        }
+        return translatedParts.length > 0 ? translatedParts.join(' ') : rawQuery;
+      }
+
+      async function expandQueryWithAI(rawQuery) {
+        const pool = State.keyPool;
+        const hasLiveKeys = (pool.keys || []).length > 0;
+        if (!hasLiveKeys) {
+          // Even without AI keys, use public MyMemory translation API or dictionary so Turkish queries get real English global papers!
+          try {
+            const hasTurkishChars = /[ğüşıöçĞÜŞİÖÇ]/.test(rawQuery) || Object.keys(TR_ACADEMIC_DICT).some(k => rawQuery.toLowerCase().includes(k));
+            if (hasTurkishChars) {
+              const trRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(rawQuery)}&langpair=tr|en`);
+              if (trRes.ok) {
+                const trData = await trRes.json();
+                const translated = (trData?.responseData?.translatedText || '').trim();
+                if (translated && translated.toLowerCase() !== rawQuery.toLowerCase()) {
+                  return {
+                    enQuery: translated,
+                    trQuery: rawQuery,
+                    newsQuery: rawQuery,
+                    usedAi: true
+                  };
+                }
+              }
+            }
+          } catch (e) {}
+          const fallbackEn = buildFallbackEnglishQuery(rawQuery);
+          return {
+            enQuery: fallbackEn,
+            trQuery: rawQuery,
+            newsQuery: rawQuery,
+            usedAi: false
+          };
+        }
+
+        try {
+          const sys = `You are a scientific search query optimizer. Respond ONLY with a valid JSON object containing keys:
+- "enQuery": concise English academic search keywords for "${rawQuery}" (max 7 words, no quotes or boolean operators).
+- "trQuery": concise Turkish academic search keywords for "${rawQuery}".
+- "newsQuery": concise news search query matching the user's exact topic "${rawQuery}".
+CRITICAL RULE: Stick 100% to the user's exact subject ("${rawQuery}"). NEVER add mining or unrelated words if the user did not ask about mining.`;
+          const res = await callAiWithKeyRotation(sys, `User query: "${rawQuery}"`);
+          const jsonMatch = res.text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return {
+              enQuery: parsed.enQuery || rawQuery,
+              trQuery: parsed.trQuery || rawQuery,
+              newsQuery: parsed.newsQuery || rawQuery,
+              usedAi: true,
+              provider: res.usedKey
+            };
+          }
+        } catch (e) {}
+        return {
+          enQuery: buildFallbackEnglishQuery(rawQuery),
+          trQuery: rawQuery,
+          newsQuery: rawQuery,
+          usedAi: false
+        };
+      }
+
       async function executeFullSearch(queryText) {
         const q = (queryText || document.getElementById('searchInput').value || '').trim();
         if (!q) {
@@ -1612,42 +1727,94 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
 
         const banner = document.getElementById('searchStatusBanner');
         const statusTitle = document.getElementById('searchStatusTitle');
+        const expBar = document.getElementById('aiQueryExpansionBar');
+        const expText = document.getElementById('aiExpandedQueryText');
+        const expSources = document.getElementById('aiSearchSourcesSummary');
+
         if (banner) banner.classList.remove('hidden');
-        if (statusTitle) statusTitle.textContent = `"${q}" için uluslararası ve Türkçe akademik veritabanları taranıyor...`;
+        if (statusTitle) statusTitle.textContent = `"${q}" için AI destekli akademik sorgu hazırlanıyor ve global veritabanları taranıyor...`;
 
         const mode = document.getElementById('searchSourceMode').value;
         const onlyOa = document.getElementById('chkOnlyFullText').checked;
         const sortOrder = document.getElementById('sortOrderSelect').value;
 
         try {
-          const tasks = [];
+          // Step 1: Translate/expand query to global academic English when searching globally
+          const expanded = await expandQueryWithAI(q);
+          const effectiveAcademicQuery = State.langScope === 'tr' ? expanded.trQuery : expanded.enQuery;
+
+          if (expBar && expText) {
+            expBar.classList.remove('hidden');
+            expText.textContent = State.langScope === 'tr'
+              ? `TR Akademik Sorgu: "${expanded.trQuery}"`
+              : `Global Akademik Sorgu: "${expanded.enQuery}" (Girilen: "${q}")`;
+          }
+
+          // Step 2: Query multiple real academic databases in parallel
+          const academicTasks = [];
           if (mode === 'all' || mode === 'academic') {
-            tasks.push(fetchOpenAlexPapers(q, State.langScope, onlyOa, sortOrder));
-          } else {
-            tasks.push(Promise.resolve([]));
+            if (State.langScope === 'tr') {
+              academicTasks.push(fetchOpenAlexPapers(expanded.trQuery, 'tr', onlyOa, sortOrder));
+              academicTasks.push(fetchCrossRefPapers(expanded.trQuery));
+            } else if (State.langScope === 'en') {
+              academicTasks.push(fetchOpenAlexPapers(expanded.enQuery, 'en', onlyOa, sortOrder));
+              academicTasks.push(fetchEuropePmcPapers(expanded.enQuery, onlyOa, sortOrder));
+              academicTasks.push(fetchArxivPapers(expanded.enQuery, sortOrder));
+              academicTasks.push(fetchSemanticScholarPapers(expanded.enQuery, onlyOa));
+            } else {
+              // 'all' -> Global English literature + Turkish literature combined, prioritizing global full-text
+              academicTasks.push(fetchOpenAlexPapers(expanded.enQuery, 'en', onlyOa, sortOrder));
+              academicTasks.push(fetchEuropePmcPapers(expanded.enQuery, onlyOa, sortOrder));
+              academicTasks.push(fetchArxivPapers(expanded.enQuery, sortOrder));
+              academicTasks.push(fetchSemanticScholarPapers(expanded.enQuery, onlyOa));
+              academicTasks.push(fetchOpenAlexPapers(expanded.trQuery, 'tr', onlyOa, sortOrder));
+            }
           }
 
-          if (mode === 'all' || mode === 'news') {
-            tasks.push(fetchMiningNews(q));
-          } else {
-            tasks.push(Promise.resolve([]));
+          const newsTask = (mode === 'all' || mode === 'news')
+            ? fetchLiveNewsForTopic(expanded.newsQuery || q, State.langScope)
+            : Promise.resolve([]);
+
+          const [academicArrays, liveNews] = await Promise.all([
+            Promise.all(academicTasks),
+            newsTask
+          ]);
+
+          // Merge & deduplicate papers strictly from live results for the searched query (NO hardcoded mining injection!)
+          const mergedPapers = [];
+          const seenTitles = new Set();
+
+          for (const arr of academicArrays) {
+            for (const p of (arr || [])) {
+              const normTitle = (p.title || '').toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '').slice(0, 60);
+              if (!normTitle || seenTitles.has(normTitle)) continue;
+              seenTitles.add(normTitle);
+              mergedPapers.push(p);
+            }
           }
 
-          const [livePapers, liveNews] = await Promise.all(tasks);
+          if (sortOrder === 'newest') {
+            mergedPapers.sort((a, b) => (b.year || 0) - (a.year || 0));
+          } else if (sortOrder === 'citations') {
+            mergedPapers.sort((a, b) => (b.citations || 0) - (a.citations || 0));
+          }
 
-          // Combine matching curated papers + live API results
-          const matchedCurated = CURATED_PAPERS.filter(cp => {
-            const hay = (cp.title + ' ' + cp.trTitle + ' ' + cp.abstract + ' ' + cp.topic).toLowerCase();
-            return q.toLowerCase().split(/\s+/).some(w => w.length > 3 && hay.includes(w));
-          });
-
-          const combinedPapers = [...matchedCurated, ...livePapers];
-          State.papers = combinedPapers.length > 0 ? combinedPapers : [...CURATED_PAPERS];
+          State.papers = mergedPapers;
           State.news = liveNews;
+
+          if (expSources) {
+            const fullTextCount = mergedPapers.filter(p => p.hasFullTextXml || p.isOpenAccess).length;
+            expSources.textContent = `${mergedPapers.length} makale bulundu (${fullTextCount} açık tam metin/PDF) • OpenAlex + EuropePMC + arXiv + Semantic Scholar`;
+          }
 
           renderAcademicResults();
           renderNewsResults();
-          showToast(`${State.papers.length} akademik makale ve ${State.news.length} güncel haber listelendi.`, 'success');
+
+          if (State.displayLangMode !== 'original' && (State.keyPool.keys || []).length > 0 && State.papers.length > 0) {
+            autoTranslateTopResultsInBackground(State.papers.slice(0, 8));
+          }
+
+          showToast(`"${q}" için ${State.papers.length} makale ve ${State.news.length} güncel haber bulundu.`, 'success');
         } catch (err) {
           renderAcademicResults();
           renderNewsResults();
@@ -1656,11 +1823,32 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
         }
       }
 
-      async function fetchOpenAlexPapers(query, langScope, onlyOa, sortOrder) {
+      async function autoTranslateTopResultsInBackground(papersSubset) {
+        try {
+          const untitled = papersSubset.filter(p => !p.trTitle && p.lang !== 'tr');
+          if (untitled.length === 0) return;
+          const promptList = untitled.map((p, idx) => `${idx + 1}. ${p.title}`).join('\n');
+          const res = await callAiWithKeyRotation(
+            'Aşağıdaki numaralı akademik makale başlıklarını tam ve doğru teknik Türkçeye çevir. Her satırda sadece "1. Çeviri" formatında yanıt ver.',
+            promptList
+          );
+          const lines = res.text.split(/\r?\n/).filter(Boolean);
+          untitled.forEach((p, idx) => {
+            const matchLine = lines.find(l => l.trim().startsWith(`${idx + 1}.`)) || lines[idx];
+            if (matchLine) {
+              p.trTitle = matchLine.replace(/^\d+[\.\)\-]\s*/, '').trim();
+            }
+          });
+          renderAcademicResults();
+        } catch (e) {}
+      }
+
+      // Source 1: OpenAlex API
+      async function fetchOpenAlexPapers(query, langFilter, onlyOa, sortOrder) {
         try {
           let filterParts = [];
-          if (langScope === 'tr') filterParts.push('language:tr');
-          if (langScope === 'en') filterParts.push('language:en');
+          if (langFilter === 'tr') filterParts.push('language:tr');
+          else if (langFilter === 'en') filterParts.push('language:en');
           if (onlyOa) filterParts.push('is_oa:true');
 
           const filterParam = filterParts.length > 0 ? `&filter=${filterParts.join(',')}` : '';
@@ -1673,41 +1861,400 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
           if (!res.ok) return [];
           const data = await res.json();
           return (data.results || []).map((w, idx) => {
-            const abstractText = reconstructOpenAlexAbstract(w.abstract_inverted_index) || 'Bu çalışmanın tam özeti ve metodoloji detayları Okuma & AI ekranında Tam Metin Avcısı ile incelenebilir.';
-            const oaUrl = w.open_access?.oa_url || w.primary_location?.pdf_url || (w.doi ? `https://doi.org/${w.doi.replace('https://doi.org/', '')}` : '');
+            const abstractText = reconstructOpenAlexAbstract(w.abstract_inverted_index);
+            const bestPdfUrl = w.best_oa_location?.pdf_url || w.primary_location?.pdf_url || w.open_access?.oa_url || '';
+            const landingUrl = w.primary_location?.landing_page_url || (w.doi ? w.doi : '');
             const cleanDoi = (w.doi || '').replace('https://doi.org/', '');
-            return {
-              id: 'oa-' + idx + '-' + Date.now(),
-              topic: 'live',
-              title: w.title || 'Akademik Çalışma',
-              trTitle: '',
-              authors: (w.authorships || []).slice(0, 4).map(a => a.author?.display_name).filter(Boolean).join(', ') || 'Araştırma Grubu',
+            const concepts = (w.concepts || []).slice(0, 5).map(c => ({ name: c.display_name, score: Math.round((c.score || 0.5) * 100) }));
+
+            return createDynamicPaperObject({
+              id: 'oa-' + langFilter + '-' + idx + '-' + Date.now(),
+              sourceDb: 'OpenAlex Global',
+              title: w.title || 'Academic Study',
+              authors: (w.authorships || []).slice(0, 5).map(a => a.author?.display_name).filter(Boolean).join(', ') || 'Araştırma Grubu',
               year: w.publication_year || 2025,
-              journal: w.primary_location?.source?.display_name || 'Uluslararası Hakemli Yayın',
+              journal: w.primary_location?.source?.display_name || 'Uluslararası Hakemli Dergi',
               citations: w.cited_by_count || 0,
-              doi: cleanDoi || '10.1016/mining.oa',
-              oaUrl: oaUrl,
-              isOpenAccess: Boolean(w.open_access?.is_oa),
-              lang: w.language || 'en',
-              tldr: {
-                problem: `${w.title} kapsamında incelenen mühendislik ve saha optimizasyon problemi.`,
-                method: 'Deneysel veri analizi, sayısal modelleme ve saha doğrulaması.',
-                findings: `Yayın yılı: ${w.publication_year || '-'}, Atıf etkisi: ${w.cited_by_count || 0}. Detaylı bulgular metin içinde yer almaktadır.`,
-                fieldUse: 'Madencilik operasyonlarında karar destek, tasarım ve güvenlik iyileştirmesi.'
-              },
+              doi: cleanDoi,
+              oaUrl: bestPdfUrl || landingUrl,
+              pdfDirectUrl: bestPdfUrl,
+              isOpenAccess: Boolean(w.open_access?.is_oa || bestPdfUrl),
+              lang: w.language || langFilter || 'en',
               abstract: abstractText,
-              fullTextSections: [
-                { heading: '1. Özet ve Araştırma Kapsamı (Abstract)', body: abstractText },
-                { heading: '2. Metodoloji ve Teknik İrdeleme', body: 'Bu makale canlı akademik veritabanından (OpenAlex / CrossRef) çekilmiştir. Sağ paneldeki Yapay Zeka Danışmanına tıklayarak veya üstteki **Tam Metin Avcısı (6 Kademe)** butonunu kullanarak çalışmanın PDF linklerine ve detaylı Türkçe analizine ulaşabilirsiniz.' }
-              ],
-              chartData: CURATED_PAPERS[0].chartData,
-              mermaidCode: CURATED_PAPERS[0].mermaidCode,
-              tableData: CURATED_PAPERS[0].tableData,
-              equations: CURATED_PAPERS[0].equations
-            };
+              concepts
+            });
           });
         } catch (e) {
           return [];
+        }
+      }
+
+      // Source 2: EuropePMC API (Direct Full-Text JATS XML & Open Access PDFs)
+      async function fetchEuropePmcPapers(query, onlyOa, sortOrder) {
+        try {
+          const oaFilter = onlyOa ? ' AND (OPEN_ACCESS:y)' : '';
+          const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(query + oaFilter)}&resultType=core&pageSize=8&format=json`;
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const data = await res.json();
+          const list = data?.resultList?.result || [];
+          return list.map((item, idx) => {
+            const pmcid = item.pmcid || '';
+            const hasFullTextXml = Boolean(pmcid && (item.inEPMC === 'Y' || item.isOpenAccess === 'Y'));
+            const pdfUrl = pmcid
+              ? `https://europepmc.org/backend/ptpmcrender.fcgi?accid=${pmcid}&blobtype=pdf`
+              : (item.fullTextUrlList?.fullTextUrl?.[0]?.url || (item.doi ? `https://doi.org/${item.doi}` : ''));
+
+            return createDynamicPaperObject({
+              id: 'epmc-' + idx + '-' + Date.now(),
+              sourceDb: 'EuropePMC Tam Metin',
+              pmcid: pmcid,
+              hasFullTextXml: hasFullTextXml,
+              title: item.title || 'Scientific Article',
+              authors: item.authorString || 'Araştırma Grubu',
+              year: parseInt(item.pubYear, 10) || 2025,
+              journal: item.journalInfo?.journal?.title || item.journalTitle || 'International Journal',
+              citations: item.citedByCount || 0,
+              doi: item.doi || '',
+              oaUrl: pdfUrl,
+              pdfDirectUrl: pmcid ? pdfUrl : '',
+              isOpenAccess: item.isOpenAccess === 'Y' || Boolean(pmcid),
+              lang: item.language || 'en',
+              abstract: (item.abstractText || '').replace(/<[^>]+>/g, ' ')
+            });
+          });
+        } catch (e) {
+          return [];
+        }
+      }
+
+      // Source 3: arXiv API (100% Free Full-Text PDFs)
+      async function fetchArxivPapers(query, sortOrder) {
+        try {
+          const sortBy = sortOrder === 'newest' ? 'submittedDate' : 'relevance';
+          const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=6&sortBy=${sortBy}&sortOrder=descending`;
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const xmlText = await res.text();
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+          const entries = Array.from(xmlDoc.querySelectorAll('entry'));
+
+          return entries.map((entry, idx) => {
+            const idUrl = entry.querySelector('id')?.textContent || '';
+            const arxivId = idUrl.split('/abs/').pop() || '';
+            const pdfUrl = arxivId ? `https://arxiv.org/pdf/${arxivId}.pdf` : idUrl;
+            const title = (entry.querySelector('title')?.textContent || '').replace(/\s+/g, ' ').trim();
+            const summary = (entry.querySelector('summary')?.textContent || '').replace(/\s+/g, ' ').trim();
+            const published = entry.querySelector('published')?.textContent || '2025';
+            const year = parseInt(published.slice(0, 4), 10) || 2025;
+            const authors = Array.from(entry.querySelectorAll('author name')).map(n => n.textContent).slice(0, 5).join(', ');
+
+            return createDynamicPaperObject({
+              id: 'arxiv-' + idx + '-' + Date.now(),
+              sourceDb: 'arXiv Tam PDF',
+              arxivId,
+              title,
+              authors: authors || 'arXiv Authors',
+              year,
+              journal: 'arXiv Open Access',
+              citations: 0,
+              doi: `10.48550/arXiv.${arxivId}`,
+              oaUrl: pdfUrl,
+              pdfDirectUrl: pdfUrl,
+              isOpenAccess: true,
+              lang: 'en',
+              abstract: summary
+            });
+          });
+        } catch (e) {
+          return [];
+        }
+      }
+
+      // Source 4: Semantic Scholar API
+      async function fetchSemanticScholarPapers(query, onlyOa) {
+        try {
+          const oaParam = onlyOa ? '&openAccessPdf' : '';
+          const url = `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(query)}&limit=8&fields=title,authors,year,abstract,citationCount,isOpenAccess,openAccessPdf,venue,externalIds${oaParam}`;
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data.data || []).map((p, idx) => {
+            const pdfUrl = p.openAccessPdf?.url || '';
+            const doi = p.externalIds?.DOI || '';
+            return createDynamicPaperObject({
+              id: 's2-' + idx + '-' + Date.now(),
+              sourceDb: 'Semantic Scholar',
+              title: p.title || 'Academic Paper',
+              authors: (p.authors || []).slice(0, 5).map(a => a.name).join(', ') || 'Araştırma Grubu',
+              year: p.year || 2025,
+              journal: p.venue || 'International Conference / Journal',
+              citations: p.citationCount || 0,
+              doi: doi,
+              oaUrl: pdfUrl || (doi ? `https://doi.org/${doi}` : ''),
+              pdfDirectUrl: pdfUrl,
+              isOpenAccess: Boolean(p.isOpenAccess || pdfUrl),
+              lang: 'en',
+              abstract: p.abstract || ''
+            });
+          });
+        } catch (e) {
+          return [];
+        }
+      }
+
+      // Source 5: CrossRef API
+      async function fetchCrossRefPapers(query) {
+        try {
+          const url = `https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=6`;
+          const res = await fetch(url);
+          if (!res.ok) return [];
+          const data = await res.json();
+          const items = data?.message?.items || [];
+          return items.map((it, idx) => {
+            const title = (it.title && it.title[0]) || 'Akademik Makale';
+            const abstractRaw = (it.abstract || '').replace(/<[^>]+>/g, ' ').trim();
+            const year = it.published?.['date-parts']?.[0]?.[0] || 2024;
+            const authors = (it.author || []).slice(0, 4).map(a => `${a.given || ''} ${a.family || ''}`.trim()).join(', ');
+            const pdfLink = (it.link || []).find(l => l['content-type'] === 'application/pdf')?.URL || '';
+            return createDynamicPaperObject({
+              id: 'cr-' + idx + '-' + Date.now(),
+              sourceDb: 'CrossRef',
+              title,
+              authors: authors || 'Araştırmacı',
+              year,
+              journal: (it['container-title'] && it['container-title'][0]) || 'Hakemli Dergi',
+              citations: it['is-referenced-by-count'] || 0,
+              doi: it.DOI || '',
+              oaUrl: pdfLink || it.URL || `https://doi.org/${it.DOI}`,
+              pdfDirectUrl: pdfLink,
+              isOpenAccess: Boolean(pdfLink),
+              lang: 'tr',
+              abstract: abstractRaw
+            });
+          });
+        } catch (e) {
+          return [];
+        }
+      }
+
+      // Dynamic Paper Builder (100% faithful to the searched paper's actual topic!)
+      function createDynamicPaperObject(raw) {
+        const cleanAbs = (raw.abstract || '').trim();
+        const sentences = cleanAbs ? cleanAbs.split(/(?<=[.!?])\s+/).filter(Boolean) : [];
+        const s1 = sentences[0] || `${raw.title} başlıklı çalışmanın ele aldığı temel bilimsel problem.`;
+        const s2 = sentences.slice(1, 3).join(' ') || 'Veri toplama, analitik modelleme ve deneysel doğrulama metodolojisi.';
+        const s3 = sentences.slice(3, 5).join(' ') || `Yayın Yılı: ${raw.year}, Atıf Etkisi: ${raw.citations}, Dergi: ${raw.journal}.`;
+        const s4 = sentences.slice(5).join(' ') || 'Bulguların ilgili disiplinde uygulama ve karar destek süreçlerine entegrasyonu.';
+
+        const initialSections = [];
+        if (cleanAbs) {
+          initialSections.push({
+            heading: '1. Makale Özeti ve Kapsamı (Abstract)',
+            body: cleanAbs
+          });
+        } else {
+          initialSections.push({
+            heading: '1. Makale Üst Verisi ve Kaynak Bilgisi',
+            body: `**Başlık:** ${raw.title}\n\n**Yazarlar:** ${raw.authors}\n\n**Dergi:** ${raw.journal} (${raw.year})\n\n*Okuma ekranı açıldığında otomatik Tam Metin Sökücü (EuropePMC XML / PDF.js / AI Derin İnceleme) tüm bölümleri aşağıya yükler.*`
+          });
+        }
+
+        const conceptLabels = (raw.concepts && raw.concepts.length > 0)
+          ? raw.concepts.map(c => c.name)
+          : ['Metodolojik Özgünlük', 'Veri Kapsamı', 'Atıf Etkisi', 'Uygulama Potansiyeli', 'Açık Erişim Skoru'];
+        const conceptScores = (raw.concepts && raw.concepts.length > 0)
+          ? raw.concepts.map(c => c.score)
+          : [85, 78, Math.min(98, 35 + (raw.citations || 0)), 88, raw.isOpenAccess ? 100 : 50];
+
+        return {
+          ...raw,
+          trTitle: raw.lang === 'tr' ? raw.title : '',
+          fullTextLoaded: false,
+          tldr: {
+            problem: s1,
+            method: s2,
+            findings: s3,
+            fieldUse: s4
+          },
+          fullTextSections: initialSections,
+          chartData: {
+            title: `"${raw.title.slice(0, 55)}..." — Kavramsal Ağırlık & Etki Analizi`,
+            labels: conceptLabels,
+            datasets: [
+              { label: 'İlgililik & Etki Skoru (%)', data: conceptScores }
+            ]
+          },
+          mermaidCode: `graph LR\nA["Araştırma Problemi (${raw.year})"] --> B["Veri & Metodoloji"]\nB --> C["Analiz (${raw.sourceDb || 'Akademik'})"]\nC --> D["Bulgular (${raw.citations} Atıf)"]\nD --> E["Uygulama & Sonuç"]`,
+          tableData: {
+            headers: ['Bilimsel Kriter', 'Makale Verisi / Değeri', 'Kaynak & Doğrulama'],
+            rows: [
+              ['Makale Başlığı', raw.title, raw.sourceDb || 'Akademik İndeks'],
+              ['Yazarlar', raw.authors, raw.journal],
+              ['Yayın Yılı & Atıf', `${raw.year} (${raw.citations} Atıf)`, raw.doi ? `DOI: ${raw.doi}` : 'Hakemli Yayın'],
+              ['Tam Metin Durumu', raw.isOpenAccess ? 'Açık Erişim (PDF / XML Mevcut)' : 'Avcı Köprüsü ile Erişilebilir', raw.oaUrl || '-']
+            ]
+          },
+          equations: [
+            {
+              name: 'Makaleye Özel Matematiksel Model & Parametre Analizi',
+              latex: '\\hat{Y} = f(X_1, X_2, \\dots, X_n) + \\varepsilon',
+              desc: 'Yan paneldeki "Formülleri Açıkla" butonuna tıkladığınızda yapay zeka bu makalenin konusuna özel denklemleri ve değişkenleri çıkarır.'
+            }
+          ]
+        };
+      }
+
+      // Live Full-Text Extractor when opening a paper in Reader!
+      async function loadRealFullTextIntoReader(paper) {
+        if (!paper || paper.fullTextLoaded) return;
+        const badge = document.getElementById('readerCascadeBadge');
+
+        if (badge) {
+          badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Tam Metin Çekiliyor (XML / PDF.js / AI)...`;
+        }
+
+        // Stage A: Try EuropePMC Full-Text JATS XML if pmcid or DOI is available
+        try {
+          let pmcid = paper.pmcid;
+          if (!pmcid && paper.doi) {
+            const lookRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:${encodeURIComponent(paper.doi)}&format=json`);
+            if (lookRes.ok) {
+              const lookData = await lookRes.json();
+              pmcid = lookData?.resultList?.result?.[0]?.pmcid || '';
+              if (pmcid) paper.pmcid = pmcid;
+            }
+          }
+          if (pmcid) {
+            const xmlRes = await fetch(`https://www.ebi.ac.uk/europepmc/webservices/rest/${pmcid}/fullTextXML`);
+            if (xmlRes.ok) {
+              const xmlStr = await xmlRes.text();
+              const xmlDoc = new DOMParser().parseFromString(xmlStr, 'text/xml');
+              const secs = Array.from(xmlDoc.querySelectorAll('body > sec'));
+              if (secs.length > 0) {
+                paper.fullTextSections = secs.map((sec, idx) => {
+                  const title = sec.querySelector('title')?.textContent || `Bölüm ${idx + 1}`;
+                  const paras = Array.from(sec.querySelectorAll('p')).map(p => p.textContent).join('\n\n');
+                  return { heading: `${idx + 1}. ${title}`, body: paras || sec.textContent };
+                }).filter(s => s.body && s.body.trim().length > 30);
+
+                if (paper.fullTextSections.length > 0) {
+                  paper.fullTextLoaded = true;
+                  if (badge) badge.innerHTML = `<i class="fa-solid fa-check-double"></i> Tam Metin Çekildi (EuropePMC XML - ${paper.fullTextSections.length} Bölüm)`;
+                  renderReaderContent();
+                  showToast('Makalenin tüm bölümleri (Giriş, Metodoloji, Bulgular, Tartışma) doğrudan okuma ekranına çekildi!', 'success');
+                  return;
+                }
+              }
+            }
+          }
+        } catch (e) {}
+
+        // Stage B: Try Unpaywall to discover direct OA PDF URL if missing
+        if (!paper.pdfDirectUrl && paper.doi && paper.doi.includes('/')) {
+          try {
+            const email = encodeURIComponent(State.hunterConfig.email || 'maden.arastirma@akademi.org');
+            const upRes = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(paper.doi)}?email=${email}`);
+            if (upRes.ok) {
+              const upData = await upRes.json();
+              const foundPdf = upData?.best_oa_location?.url_for_pdf;
+              if (foundPdf) {
+                paper.pdfDirectUrl = foundPdf;
+                paper.oaUrl = foundPdf;
+              }
+            }
+          } catch (e) {}
+        }
+
+        // Stage C: Try PDF.js in-browser full-text extraction if direct PDF URL is available
+        if (paper.pdfDirectUrl && window.pdfjsLib) {
+          try {
+            const loadingTask = window.pdfjsLib.getDocument({ url: paper.pdfDirectUrl });
+            const pdfDoc = await loadingTask.promise;
+            const maxPages = Math.min(pdfDoc.numPages, 15);
+            const extractedSections = [];
+            for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+              const page = await pdfDoc.getPage(pageNum);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+              if (pageText.length > 60) {
+                extractedSections.push({
+                  heading: `Sayfa ${pageNum} / ${pdfDoc.numPages} (PDF Tam Metin İçeriği)`,
+                  body: pageText
+                });
+              }
+            }
+            if (extractedSections.length > 0) {
+              paper.fullTextSections = extractedSections;
+              paper.fullTextLoaded = true;
+              if (badge) badge.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF Tam Metni Çözümlendi (${extractedSections.length} Sayfa)`;
+              renderReaderContent();
+              showToast('PDF dosyasının tam metni ayrıştırılarak okuma ekranına aktarıldı!', 'success');
+              return;
+            }
+          } catch (e) {}
+        }
+
+        // Stage D: Use User's Gemini / Groq API Keys to build comprehensive Full-Article Analysis, Sections, Table & Chart specifically for THIS paper
+        if ((State.keyPool.keys || []).length > 0) {
+          try {
+            if (badge) badge.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles fa-spin"></i> AI Anahtarınızla Tam Metin Bölümleri Oluşturuluyor...`;
+            const sys = `Sen akademik bir başaraştırmacısın. Kullanıcının açtığı makaleyi inceleyip Türkçe olarak çok kapsamlı, doyurucu ve tamamen BU MAKALEYE ÖZEL bir teknik inceleme metni üret. Asla makalenin kendi konusu dışında başka bir alandan bahsetme!
+Yanıtını SADECE geçerli bir JSON objesi olarak ver:
+{
+  "trTitle": "Makalenin tam Türkçe başlığı",
+  "tldr": {
+    "problem": "Bu makalenin çözdüğü spesifik problem (2-3 cümle)",
+    "method": "Kullanılan spesifik metodoloji, veri seti ve algoritmalar",
+    "findings": "Elde edilen sayısal ve bilimsel bulgular",
+    "fieldUse": "Pratikte ve ilgili alanda nasıl kullanıldığı"
+  },
+  "sections": [
+    {"heading": "1. Giriş, Arka Plan ve Araştırma Problemi", "body": "En az 2 paragraf detaylı teknik açıklama..."},
+    {"heading": "2. Metodoloji, Deneysel Tasarım ve Algoritmik Yapı", "body": "En az 2 paragraf detaylı metodoloji açıklaması..."},
+    {"heading": "3. Bulgular, Sayısal Sonuçlar ve Kıyaslama", "body": "En az 2 paragraf detaylı bulgular ve değerlendirme..."},
+    {"heading": "4. Tartışma, Kısıtlar ve Uygulama Önerileri", "body": "Detaylı değerlendirme..."}
+  ],
+  "table": {
+    "headers": ["Parametre / Kriter", "Makaledeki Yaklaşım / Bulgu", "Teknik Açıklama ve Etki"],
+    "rows": [
+      ["...", "...", "..."],
+      ["...", "...", "..."],
+      ["...", "...", "..."]
+    ]
+  }
+}`;
+            const userMsg = `Makale Başlığı: ${paper.title}\nYazarlar: ${paper.authors}\nDergi ve Yıl: ${paper.journal} (${paper.year})\nDOI: ${paper.doi}\nMevcut Özet (Abstract): ${paper.abstract || 'Özet metni kısıtlı, başlık ve literatür bilgisinden kapsamlı analiz üret.'}`;
+            const aiRes = await callAiWithKeyRotation(sys, userMsg);
+            const jsonMatch = aiRes.text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              if (parsed.trTitle) paper.trTitle = parsed.trTitle;
+              if (parsed.tldr) paper.tldr = parsed.tldr;
+              if (Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+                if (paper.abstract) {
+                  parsed.sections.push({
+                    heading: '5. Orijinal Akademik Özet (Original Abstract)',
+                    body: paper.abstract
+                  });
+                }
+                paper.fullTextSections = parsed.sections;
+              }
+              if (parsed.table && parsed.table.headers && parsed.table.rows) {
+                paper.tableData = parsed.table;
+              }
+              paper.fullTextLoaded = true;
+              if (badge) badge.innerHTML = `<i class="fa-solid fa-robot"></i> AI Derin Makale İncelemesi Hazır (${aiRes.usedKey})`;
+              renderReaderContent();
+              showToast('Makale bölümleri ve tabloları AI anahtarınızla Türkçe olarak hazırlandı!', 'success');
+              return;
+            }
+          } catch (e) {}
+        }
+
+        if (badge) {
+          badge.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Tam Metin Avcısı Hazır`;
         }
       }
 
@@ -1722,52 +2269,40 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
         return words.filter(Boolean).join(' ');
       }
 
-      async function fetchMiningNews(query) {
-        const curatedNews = [
-          {
-            title: 'Yeraltı Kömür Ocaklarında Fiber Optik ve IoT Tabanlı Grizu Erken Uyarı Sistemleri Yaygınlaşıyor',
-            source: 'Madencilik Sektör Raporu',
-            date: 'Kasım 2026',
-            url: 'https://news.google.com/search?q=' + encodeURIComponent(query + ' madencilik'),
-            tag: 'Grizu & Teknoloji',
-            summary: 'Yeni nesil lazer metan sensörleri ve yapay zeka destekli merkezi izleme istasyonları ile yeraltı ocaklarında gaz değişimleri 30 dakika önceden tahmin ediliyor.'
-          },
-          {
-            title: 'Madenlerde İş Sağlığı ve Güvenliği (İSG) Denetimlerinde Dijital İkiz ve Yakınlık Algılama Dönemi',
-            source: 'İSG & Maden Gündemi',
-            date: 'Ekim 2026',
-            url: 'https://news.google.com/search?q=' + encodeURIComponent('maden iş güvenliği tahkimat'),
-            tag: 'İSG & Mevzuat',
-            summary: 'Yeraltı nakliyat ve tahkimat operasyonlarında çalışan-ekipman çarpışmasını önleyen UWB sensörler ve gerçek zamanlı şilt basınç takibi standart haline geliyor.'
-          },
-          {
-            title: 'Kritik Mineraller ve Cevher Modellemede Makine Öğrenmesi Destekli 3B Jeoistatistik Uygulamaları',
-            source: 'Global Mining Intelligence',
-            date: 'Ekim 2026',
-            url: 'https://news.google.com/search?q=' + encodeURIComponent('geostatistics mining kriging'),
-            tag: 'Jeoistatistik',
-            summary: 'Sondaj verilerinden cevher tenörü tahmininde klasik Kriging ile derin öğrenme modellerinin birleştirilmesi rezerv belirsizliğini %20 oranında düşürüyor.'
-          }
-        ];
-
+      // Pure Topic News Search (NO forced 'maden OR mining' injection!)
+      async function fetchLiveNewsForTopic(query, langScope) {
         try {
-          const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query + ' maden OR mining')}&hl=tr&gl=TR&ceid=TR:tr`;
+          const hl = langScope === 'en' ? 'en-US' : 'tr';
+          const gl = langScope === 'en' ? 'US' : 'TR';
+          const ceid = langScope === 'en' ? 'US:en' : 'TR:tr';
+          const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
           const api = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
           const res = await fetch(api);
-          if (!res.ok) return curatedNews;
-          const data = await res.json();
-          if (!data.items || data.items.length === 0) return curatedNews;
-          return data.items.slice(0, 6).map(item => ({
-            title: item.title,
-            source: item.author || 'Güncel Haber Kaynağı',
-            date: (item.pubDate || '').slice(0, 16) || 'Güncel',
-            url: item.link,
-            tag: 'Canlı Haber',
-            summary: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 180) + '...'
-          }));
-        } catch (e) {
-          return curatedNews;
-        }
+          if (res.ok) {
+            const data = await res.json();
+            if (data.items && data.items.length > 0) {
+              return data.items.slice(0, 8).map(item => ({
+                title: item.title,
+                source: item.author || 'Güncel Haber Kaynağı',
+                date: (item.pubDate || '').slice(0, 16) || 'Güncel',
+                url: item.link,
+                tag: query.slice(0, 22),
+                summary: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 200) + '...'
+              }));
+            }
+          }
+        } catch (e) {}
+
+        return [
+          {
+            title: `"${query}" Konusunda Son Güncel Haberler ve Gelişmeler`,
+            source: 'Google Haberler Canlı Akış',
+            date: 'Güncel',
+            url: `https://news.google.com/search?q=${encodeURIComponent(query)}&hl=tr&gl=TR&ceid=TR:tr`,
+            tag: query.slice(0, 20),
+            summary: `"${query}" aramasıyla ilgili ulusal ve uluslararası basında çıkan en son haberleri doğrudan görüntülemek için tıklayın.`
+          }
+        ];
       }
 
       // --- 10. 6-STAGE WATERFALL DEEP FULL-TEXT HUNTER ALGORITHM ---
@@ -1970,6 +2505,7 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
             <article class="theme-bg-secondary border theme-border rounded-2xl p-4 sm:p-5 space-y-3 hover:border-amber-500/60 transition">
               <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="px-2 py-0.5 rounded-md theme-accent-soft font-bold">${paper.sourceDb || 'Akademik İndeks'}</span>
                   <span class="px-2.5 py-0.5 rounded-md theme-bg-card border theme-border font-semibold">${paper.journal}</span>
                   <span class="px-2 py-0.5 rounded-md theme-accent-soft font-bold">${paper.year}</span>
                   <span class="px-2 py-0.5 rounded-md theme-bg-card border theme-border"><i class="fa-solid fa-quote-right mr-1"></i>${paper.citations} Atıf</span>
@@ -2107,10 +2643,16 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
 
       // --- 12. READER & VISUALIZATION ENGINE ---
       function openPaperInReader(paper) {
+        const isDifferentPaper = !State.activePaper || State.activePaper.id !== paper.id;
         State.activePaper = paper;
         document.getElementById('activePaperBadge')?.classList.remove('hidden');
+        if (isDifferentPaper) {
+          const chatBox = document.getElementById('aiChatMessages');
+          if (chatBox) chatBox.innerHTML = '';
+        }
         switchView('reader');
         renderReaderContent();
+        loadRealFullTextIntoReader(paper);
       }
 
       function renderReaderContent() {
@@ -2298,7 +2840,8 @@ Bu çalışmada ele alınan temel problem **${tldr.problem || 'karmaşık jeoloj
         appendAiMessage('user', q);
 
         const p = State.activePaper;
-        const sysPrompt = `Sen kıdemli bir Maden Mühendisi, Jeoistatistik Uzmanı, Kaya Mekaniği/Tahkimat ve İş Güvenliği (İSG) Profesörüsün. Kullanıcının incelediği makale: "${p?.title || ''}" (${p?.year || ''}). Özet: ${p?.abstract || ''}. Yanıtlarını her zaman Türkçe, anlaşılır, bilimsel olarak tam doğru ve Markdown tabloları/maddeleri kullanarak ver.`;
+        const fullContext = (p?.fullTextSections || []).map(s => `${s.heading}: ${s.body}`).join('\n').slice(0, 8000);
+        const sysPrompt = `Sen incelenen makalenin bilim dalında uzman kıdemli bir Akademisyen, Profesör ve Başaraştırmacısın. Kullanıcının incelediği makale: "${p?.title || ''}" (${p?.year || ''}, Dergi: ${p?.journal || ''}). Makale İçeriği/Özeti: ${fullContext || p?.abstract || ''}. Sadece bu makalenin konusu ve bilimsel disiplini çerçevesinde kal; yanıtlarını her zaman Türkçe, anlaşılır, bilimsel olarak tam doğru ve Markdown tabloları/maddeleri kullanarak ver.`;
 
         const res = await callAiWithKeyRotation(sysPrompt, q);
         appendAiMessage('assistant', res.text, res.usedKey);
@@ -3020,11 +3563,6 @@ AIzaSyDu34KOrnekGemini4`;
         URL.revokeObjectURL(url);
       }
 
-            if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js').catch(function() {});
-        });
-      }
       window.addEventListener('DOMContentLoaded', initApp);
     })();
   </script>
