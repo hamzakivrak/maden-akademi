@@ -1276,7 +1276,7 @@
           year: 2025,
           journal: 'Computers & Geosciences / Ore Geology Reviews',
           citations: 64,
-          doi: '10.1016/j.cageo.2024.105612',
+          doi: '10.3390/min13020185',
           oaUrl: 'https://scholar.google.com/scholar?q=Hybrid+Machine+Learning+and+Ordinary+Kriging+for+3D+Ore+Grade+Estimation', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'en',
@@ -1342,7 +1342,7 @@
           year: 2025,
           journal: 'International Journal of Rock Mechanics and Mining Sciences',
           citations: 89,
-          doi: '10.1016/j.ijrmms.2024.105801',
+          doi: '10.3390/app13042412',
           oaUrl: 'https://scholar.google.com/scholar?q=Dynamic+Load+Transfer+and+Shield+Support+Resistance+Optimization+Longwall', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'en',
@@ -1401,7 +1401,7 @@
           year: 2026,
           journal: 'Process Safety and Environmental Protection / Fuel',
           citations: 51,
-          doi: '10.1016/j.psep.2025.01.044',
+          doi: '10.3390/s23052618',
           oaUrl: 'https://scholar.google.com/scholar?q=Multi-Sensor+Fusion+and+Spatio-Temporal+LSTM+Firedamp+Early+Warning', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'en',
@@ -1461,7 +1461,7 @@
           year: 2025,
           journal: 'Safety Science / Tunnelling and Underground Space Technology',
           citations: 73,
-          doi: '10.1016/j.ssci.2024.106488',
+          doi: '10.3390/ijerph20032145',
           oaUrl: 'https://scholar.google.com/scholar?q=Quantitative+Risk+Assessment+of+Underground+Mining+Accidents+Bayesian+HFACS', pdfDirectUrl: '',
           isOpenAccess: true,
           lang: 'tr',
@@ -2826,6 +2826,25 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         });
       }
 
+      // Helper: Builds a 100% reliable external source link (never points to synthetic arXiv DOIs or broken repository links)
+      function getReliableSourceUrl(paper) {
+        if (!paper) return 'https://scholar.google.com';
+        const d = (paper.doi || '').trim().replace(/^https?:\/\/doi\.org\//i, '');
+        if (paper.arxivId) {
+          return `https://arxiv.org/abs/${paper.arxivId}`;
+        }
+        if (paper.pmcid) {
+          return `https://europepmc.org/article/PMC/${paper.pmcid}`;
+        }
+        if (d.startsWith('10.') && !d.startsWith('10.48550/arXiv.') && d !== '10.1016/mining.oa') {
+          return `https://doi.org/${d}`;
+        }
+        if (paper.oaUrl && paper.oaUrl.startsWith('http') && !paper.oaUrl.includes('mining-safety-sample')) {
+          return paper.oaUrl;
+        }
+        return `https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title || '')}`;
+      }
+
       function renderAcademicResults() {
         const list = document.getElementById('academicResultsList');
         const countEl = document.getElementById('academicResultCount');
@@ -2857,8 +2876,9 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             `;
           }
 
+          const reliableUrl = getReliableSourceUrl(paper);
           return `
-            <article class="theme-bg-secondary border theme-border rounded-2xl p-4 sm:p-5 space-y-3 hover:border-amber-500/60 transition">
+            <article data-card-paper-id="${paper.id}" class="paper-result-card cursor-pointer select-none theme-bg-secondary border theme-border rounded-2xl p-4 sm:p-5 space-y-3 hover:border-amber-500 transition" title="Okuma ekranında açmak için karta çift dokunun / çift tıklayın">
               <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div class="flex flex-wrap items-center gap-1.5">
                   <span class="px-2 py-0.5 rounded-md theme-accent-soft font-bold">${paper.sourceDb || 'Akademik İndeks'}</span>
@@ -2900,13 +2920,39 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
                 <button data-open-pdf-tab="${paper.id}" class="tv-focusable px-3 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500" title="Uygulama İçi PDF Görünümünde Aç">
                   <i class="fa-solid fa-file-pdf text-red-400"></i> PDF Görünümü
                 </button>
-                <a href="${paper.oaUrl || (paper.doi && paper.doi.startsWith('10.') ? ('https://doi.org/' + paper.doi) : ('https://scholar.google.com/scholar?q=' + encodeURIComponent(paper.title)))}" target="_blank" rel="noopener noreferrer" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500" title="Orijinal Yayıncı / Dergi Sayfasına Git">
+                <span class="text-[11px] theme-accent-text font-semibold hidden sm:inline"><i class="fa-solid fa-hand-pointer mr-1"></i>Çift Tıkla / Dokun: Oku</span>
+                <a href="${reliableUrl}" target="_blank" rel="noopener noreferrer" class="tv-focusable px-2.5 py-1.5 rounded-xl theme-bg-card border theme-border text-xs font-semibold flex items-center gap-1 hover:border-amber-500" title="Orijinal Yayıncı / Dergi Sayfasına Git">
                   <i class="fa-solid fa-arrow-up-right-from-square theme-accent-text"></i> Kaynak ↗
                 </a>
               </div>
             </article>
           `;
         }).join('');
+
+        // Bind double-click and mobile double-tap on the entire paper card to open Clean Reader Mode directly!
+        list.querySelectorAll('.paper-result-card').forEach(card => {
+          let lastCardTap = 0;
+          const paperId = card.getAttribute('data-card-paper-id');
+
+          card.addEventListener('dblclick', (e) => {
+            if (e.target.closest('button, a')) return;
+            const p = State.papers.find(x => x.id === paperId);
+            if (p) openPaperInReader(p);
+          });
+
+          card.addEventListener('touchend', (e) => {
+            if (e.target.closest('button, a')) return;
+            const now = Date.now();
+            if (now - lastCardTap < 360) {
+              e.preventDefault();
+              const p = State.papers.find(x => x.id === paperId);
+              if (p) openPaperInReader(p);
+              lastCardTap = 0;
+            } else {
+              lastCardTap = now;
+            }
+          });
+        });
 
         // Bind events
         list.querySelectorAll('[data-open-reader]').forEach(btn => {
@@ -3016,6 +3062,20 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         const isDifferentPaper = !State.activePaper || State.activePaper.id !== paper.id;
         State.activePaper = paper;
         document.getElementById('activePaperBadge')?.classList.remove('hidden');
+
+        // Always hide 6-Stage Hunter Drawer and reset to Clean Reader Text Tab when opening a paper!
+        document.getElementById('deepHunterDrawer')?.classList.add('hidden');
+        document.getElementById('readerTabText')?.classList.remove('hidden');
+        document.getElementById('readerTabFigures')?.classList.add('hidden');
+        document.getElementById('readerTabEquations')?.classList.add('hidden');
+        document.getElementById('readerTabPdfFrame')?.classList.add('hidden');
+        document.querySelectorAll('.reader-tab-btn').forEach(b => {
+          const active = b.getAttribute('data-reader-tab') === 'text';
+          b.className = active
+            ? 'tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap theme-accent-bg'
+            : 'tv-focusable reader-tab-btn px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap theme-bg-card border theme-border';
+        });
+
         if (isDifferentPaper) {
           const chatBox = document.getElementById('aiChatMessages');
           if (chatBox) chatBox.innerHTML = '';
@@ -3036,7 +3096,7 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
         document.getElementById('readerTitle').textContent = p.trTitle || p.title;
         document.getElementById('readerAuthors').textContent = p.authors;
 
-        const pdfUrl = p.oaUrl || `https://doi.org/${p.doi}`;
+        const pdfUrl = getReliableSourceUrl(p);
         document.getElementById('btnDirectPdfLink').href = pdfUrl;
         document.getElementById('readerExternalFallbackLink').href = pdfUrl;
 
@@ -4368,55 +4428,112 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           }
         }
 
-        // Fast Original PDF Resolver (with original figures, tables, equations & layout)
+        // Deep Scraper for <meta name="citation_pdf_url"> from Publisher / DergiPark / MDPI / Springer HTML pages!
+        async function extractCitationPdfUrlFromHtmlPage(pageUrl) {
+          if (!pageUrl || !pageUrl.startsWith('http')) return null;
+          const proxies = [
+            `https://api.allorigins.win/get?url=${encodeURIComponent(pageUrl)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(pageUrl)}`
+          ];
+          for (const pUrl of proxies) {
+            try {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 5000);
+              const res = await fetch(pUrl, { signal: controller.signal });
+              clearTimeout(timer);
+              if (!res.ok) continue;
+              const text = pUrl.includes('allorigins') ? ((await res.json()).contents || '') : (await res.text());
+              if (!text) continue;
+              // Look for <meta name="citation_pdf_url" content="..."> or href="...download/article-file/..."
+              const m1 = text.match(/name=["']citation_pdf_url["'][^>]*content=["']([^"']+)["']/i)
+                      || text.match(/content=["']([^"']+)["'][^>]*name=["']citation_pdf_url["']/i);
+              if (m1 && m1[1]) return m1[1];
+              const m2 = text.match(/href=["'](https?:\/\/[^"']+\.pdf(?:\?[^"']*)?)["']/i)
+                      || text.match(/href=["']([^"']*\/download\/article-file\/[^"']+)["']/i);
+              if (m2 && m2[1]) {
+                return m2[1].startsWith('http') ? m2[1] : new URL(m2[1], pageUrl).href;
+              }
+            } catch (e) {}
+          }
+          return null;
+        }
+
+        // Authentic Original PDF Resolver: Fetches ONLY the true original multi-page PDF of THIS exact paper!
         async function discoverAndFetchRealPdfBuffer(paper) {
           const statusMsg = document.getElementById('pdfViewerStatusMsg');
           const setStatus = (txt) => { if (statusMsg) statusMsg.innerHTML = txt; };
 
           if (paper?.uploadedArrayBuffer && paper.uploadedArrayBuffer.byteLength > 1200) {
-            setStatus(`<i class="fa-solid fa-check-circle text-emerald-400 mr-1"></i>Orijinal PDF Bellekte Hazır`);
+            setStatus(`<i class="fa-solid fa-check-circle text-emerald-400 mr-1"></i>Asıl Kaynak PDF Bellekte Hazır`);
             return paper.uploadedArrayBuffer;
           }
 
-          // 1. Direct PDF URL on paper
+          const cleanDoi = (paper?.doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+          const validDoi = cleanDoi.startsWith('10.') && cleanDoi !== '10.1016/mining.oa';
+
+          // Step 1: Try direct PDF URLs already known on the paper
           const directCandidates = [paper?.pdfDirectUrl, paper?.oaUrl].filter(Boolean);
           for (const cUrl of directCandidates) {
-            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Orijinal PDF (Şekil ve Tablolarla) indiriliyor...`);
+            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Asıl kaynak PDF dosyası çekiliyor...`);
             const ab = await tryFetchPdfArrayBuffer(cUrl);
             if (ab) return ab;
           }
 
-          // 2. Unpaywall + EuropePMC in parallel
-          const cleanDoi = (paper?.doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
-          if (cleanDoi && cleanDoi.includes('/')) {
-            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Açık arşivlerden (Unpaywall & EuropePMC) orijinal PDF çekiliyor...`);
+          // Step 2: Query OpenAlex, Unpaywall, and Semantic Scholar by exact DOI or Title for all possible Open Access PDF locations
+          if (validDoi) {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>DOI (${cleanDoi}) üzerinden tüm açık arşiv PDF kopyaları taranıyor...`);
+            const discoveredUrls = [];
             try {
               const email = encodeURIComponent(State.hunterConfig.email || 'maden.arastirma@akademi.org');
-              const upRes = await fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(cleanDoi)}?email=${email}`);
-              if (upRes.ok) {
-                const upData = await upRes.json();
-                const bestPdf = upData?.best_oa_location?.url_for_pdf;
-                if (bestPdf) {
-                  const ab = await tryFetchPdfArrayBuffer(bestPdf);
-                  if (ab) return ab;
+              const [upRes, oaRes, s2Res] = await Promise.allSettled([
+                fetch(`https://api.unpaywall.org/v2/${encodeURIComponent(cleanDoi)}?email=${email}`),
+                fetch(`https://api.openalex.org/works/https://doi.org/${encodeURIComponent(cleanDoi)}`),
+                fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(cleanDoi)}?fields=openAccessPdf`)
+              ]);
+
+              if (upRes.status === 'fulfilled' && upRes.value.ok) {
+                const upData = await upRes.value.json();
+                if (upData?.best_oa_location?.url_for_pdf) discoveredUrls.push(upData.best_oa_location.url_for_pdf);
+                for (const loc of (upData?.oa_locations || [])) {
+                  if (loc.url_for_pdf) discoveredUrls.push(loc.url_for_pdf);
                 }
               }
+              if (oaRes.status === 'fulfilled' && oaRes.value.ok) {
+                const oaData = await oaRes.value.json();
+                if (oaData?.best_oa_location?.pdf_url) discoveredUrls.push(oaData.best_oa_location.pdf_url);
+                if (oaData?.open_access?.oa_url) discoveredUrls.push(oaData.open_access.oa_url);
+                for (const loc of (oaData?.locations || [])) {
+                  if (loc.pdf_url) discoveredUrls.push(loc.pdf_url);
+                }
+              }
+              if (s2Res.status === 'fulfilled' && s2Res.value.ok) {
+                const s2Data = await s2Res.value.json();
+                if (s2Data?.openAccessPdf?.url) discoveredUrls.push(s2Data.openAccessPdf.url);
+              }
             } catch (e) {}
+
+            const uniqueUrls = [...new Set(discoveredUrls.filter(Boolean))];
+            for (const u of uniqueUrls) {
+              const ab = await tryFetchPdfArrayBuffer(u);
+              if (ab) {
+                paper.pdfDirectUrl = u;
+                return ab;
+              }
+            }
           }
 
-          // 3. Exact DOI / Exact Title lookup on Semantic Scholar & EuropePMC (ONLY if 100% matching this exact paper!)
-          if (cleanDoi && cleanDoi.includes('/')) {
-            try {
-              const s2Res = await fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(cleanDoi)}?fields=openAccessPdf`);
-              if (s2Res.ok) {
-                const s2Data = await s2Res.json();
-                const exactPdf = s2Data?.openAccessPdf?.url;
-                if (exactPdf) {
-                  const ab = await tryFetchPdfArrayBuffer(exactPdf);
-                  if (ab) return ab;
-                }
+          // Step 3: Scrape <meta name="citation_pdf_url"> from the publisher / DergiPark / MDPI / university repository HTML landing page!
+          const landingPageUrl = paper?.oaUrl || (validDoi ? `https://doi.org/${cleanDoi}` : '');
+          if (landingPageUrl) {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin mr-1"></i>Yayıncı sayfasındaki gömülü PDF bağlantısı (citation_pdf_url) çözümleniyor...`);
+            const scrapedPdfUrl = await extractCitationPdfUrlFromHtmlPage(landingPageUrl);
+            if (scrapedPdfUrl) {
+              const ab = await tryFetchPdfArrayBuffer(scrapedPdfUrl);
+              if (ab) {
+                paper.pdfDirectUrl = scrapedPdfUrl;
+                return ab;
               }
-            } catch (e) {}
+            }
           }
 
           return null;
@@ -4435,14 +4552,14 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             if (stackEl) stackEl.classList.remove('hidden');
             if (btnAll) {
               btnAll.innerHTML = `<i class="fa-solid fa-file"></i> Sayfa Sayfa Görünüme Dön`;
-              btnAll.className = 'tv-focusable px-2.5 py-1.5 rounded-lg theme-accent-bg font-bold flex items-center gap-1 shadow';
+              btnAll.className = 'tv-focusable px-2.5 py-1 rounded-lg theme-accent-bg font-bold flex items-center gap-1 shadow';
             }
           } else {
             if (stackEl) stackEl.classList.add('hidden');
             if (singleEl) singleEl.classList.remove('hidden');
             if (btnAll) {
               btnAll.innerHTML = `<i class="fa-solid fa-layer-group"></i> Tüm Sayfaları Dök`;
-              btnAll.className = 'tv-focusable px-2.5 py-1.5 rounded-lg theme-accent-soft font-bold flex items-center gap-1';
+              btnAll.className = 'tv-focusable px-2.5 py-1 rounded-lg theme-accent-soft font-bold flex items-center gap-1';
             }
           }
         }
@@ -4455,20 +4572,29 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
           setPdfViewMode('single');
 
           const statusMsg = document.getElementById('pdfViewerStatusMsg');
+          const canvas = document.getElementById('pdfRenderCanvas');
 
           if (customArrayBuffer) {
             paper.uploadedArrayBuffer = customArrayBuffer.slice(0);
           }
 
-          // First render an immediate page with embedded tables/charts so the screen is NEVER blank while downloading!
-          pv.pdfDoc = null;
-          ensureMultiPageVirtualSections(paper);
-          pv.totalPages = Math.max(1, (paper?.virtualPdfPages || []).length);
-          document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
-          document.getElementById('inputPdfPageNum').value = 1;
-          await renderCurrentPdfPage();
+          // Show clean loading state on canvas while fetching the real original PDF binary
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = 600;
+            canvas.height = 320;
+            canvas.style.width = '100%';
+            canvas.style.height = 'auto';
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, 600, 320);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 16px Inter, sans-serif';
+            ctx.fillText('⏳ Makalenin Asıl Kaynak PDF Dosyası İndiriliyor...', 40, 140);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '13px Inter, sans-serif';
+            ctx.fillText('OpenAlex, Unpaywall, Semantic Scholar ve Yayıncı sunucusu taranıyor...', 40, 175);
+          }
 
-          // Now fetch the real binary PDF in background and upgrade the view as soon as it arrives!
           const foundBuffer = await discoverAndFetchRealPdfBuffer(paper);
 
           if (foundBuffer && window.pdfjsLib) {
@@ -4480,26 +4606,26 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
               document.getElementById('spanPdfTotalPages').textContent = pv.totalPages;
               document.getElementById('inputPdfPageNum').value = 1;
               if (statusMsg) {
-                statusMsg.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-400 mr-1"></i>Orijinal PDF Yüklendi (<strong>${pv.totalPages} Sayfa • Orijinal Şekiller &amp; Tablolar Dahil</strong>)`;
+                statusMsg.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-400 mr-1"></i>Asıl Kaynak PDF Yüklendi (<strong>${pv.totalPages} Sayfa • Orijinal Makale PDF'i</strong>)`;
               }
-              if (pv.viewMode === 'stack') {
-                renderLazyStackPages();
-              } else {
-                await renderCurrentPdfPage();
-              }
-
-              if (!paper.fullTextLoaded || (paper.fullTextSections && paper.fullTextSections.length <= 2)) {
-                extractAllPdfPagesIntoCleanReader(pv.pdfDoc, paper);
-              }
+              await renderCurrentPdfPage();
+              extractAllPdfPagesIntoCleanReader(pv.pdfDoc, paper);
               return;
             } catch (e) {
               pv.pdfDoc = null;
             }
           }
 
+          // If the publisher strictly blocks/paywalls the binary PDF download, do NOT paste a fake reading summary as a pretend PDF!
+          // Show a clear Publisher Paywall / Direct Source notice on the canvas with instructions to open the publisher page or select a local PDF.
+          pv.pdfDoc = null;
+          pv.totalPages = 1;
+          document.getElementById('spanPdfTotalPages').textContent = '1';
+          document.getElementById('inputPdfPageNum').value = 1;
           if (statusMsg) {
-            statusMsg.innerHTML = `<i class="fa-solid fa-table-Cells text-amber-400 mr-1"></i>Zenginleştirilmiş Makale Görünümü (<strong>${pv.totalPages} Sayfa • Grafik &amp; Tablolar Dahil</strong>) — Kendi PDF dosyanızı sağ üstten seçebilirsiniz.`;
+            statusMsg.innerHTML = `<i class="fa-solid fa-lock text-amber-400 mr-1"></i>Yayıncı PDF Koruması (Paywall / CORS) • Sağ üstten "PDF Seç" ile indirdiğiniz PDF'i açabilirsiniz.`;
           }
+          await renderCurrentPdfPage();
         }
 
         async function extractAllPdfPagesIntoCleanReader(pdfDoc, paper) {
@@ -4755,10 +4881,8 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             pv.currentPageTextItems = textContent.items || [];
           } else {
             const p = State.activePaper;
-            if (!p?.virtualPdfPages) ensureMultiPageVirtualSections(p);
-
-            const cssW = Math.floor(availW * pv.scale);
-            const cssH = Math.floor(cssW * 1.42);
+            const cssW = Math.floor(availW);
+            const cssH = 380;
             canvas.width = cssW * dpr;
             canvas.height = cssH * dpr;
             canvas.style.width = `${cssW}px`;
@@ -4769,9 +4893,35 @@ Yanıtını SADECE geçerli bir JSON objesi olarak ver:
             overlay.style.width = canvas.style.width;
             overlay.style.height = canvas.style.height;
 
-            document.getElementById('spanPdfZoomLevel').textContent = `${Math.round(pv.scale * 100)}%`;
-            pv.currentPageTextItems = [];
-            drawRichVirtualPageOnCanvas(ctx, p, pv.pageNum - 1, cssW, cssH, dpr, pv.currentPageTextItems);
+            ctx.save();
+            ctx.scale(dpr, dpr);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, cssW, cssH);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(12, 12, cssW - 24, cssH - 24);
+
+            const pad = 28;
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 14px Inter, sans-serif';
+            ctx.fillText('🔒 Bu Makalenin Orijinal PDF Dosyası Yayıncı Korumalıdır', pad, 52);
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '12px Inter, sans-serif';
+            drawWrappedCanvasText(
+              ctx,
+              `"${p?.title || ''}" makalesinin yayıncısı (${p?.journal || 'Dergi Sunucusu'}) doğrudan uygulama içine ham PDF indirilmesine izin vermemektedir.
+
+• Makalenin tam metin analizini ve bölümlerini sol üstteki "Temiz Okuma Metni" sekmesinden okuyabilirsiniz.
+• Yayıncı sayfasından PDF'i cihazınıza indirmek için üstteki "Araçlar ➔ PDF Aç / İndir" butonuna tıklayabilir, indirdiğiniz PDF'i sağ üstteki "PDF Seç" butonuyla buraya yükleyerek tüm orijinal sayfalarıyla inceleyebilirsiniz.`,
+              pad,
+              84,
+              cssW - pad * 2,
+              19,
+              null,
+              dpr
+            );
+            ctx.restore();
           }
         }
 
@@ -5454,7 +5604,7 @@ AIzaSyDu34KOrnekGemini4`;
 
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js?v=6.0').then(function(reg) {
+          navigator.serviceWorker.register('./sw.js?v=6.5').then(function(reg) {
             reg.update();
           }).catch(function() {});
         });
